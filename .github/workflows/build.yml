@@ -16,11 +16,10 @@ jobs:
     - name: Unzip Source Code
       run: |
         unzip -o project.zip
-        # في حال كانت الملفات داخل مجلد فرعي داخل الملف المضغوط
-        if [ ! -f "gradlew" ]; then
-          mv */* . 2>/dev/null || true
+        # نقل المحتويات من مجلد Apk إلى المسار الرئيسي
+        if [ -d "Apk" ]; then
+          cp -r Apk/* .
         fi
-        chmod +x gradlew
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
@@ -29,8 +28,11 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+
     - name: Build Debug APK
-      run: ./gradlew assembleDebug --stacktrace
+      run: gradle assembleDebug --stacktrace
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
