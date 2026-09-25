@@ -13,13 +13,16 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-    - name: Build with Gradle
+    - name: Build APK
       env:
         ANDROID_HOME: /usr/local/lib/android/sdk
       run: |
         chmod +x gradlew
-        ./gradlew assembleDebug --no-daemon
+        ./gradlew :app:assembleDebug --stacktrace --no-daemon
+        ls -la
+        find . -name "*.apk"
     - uses: actions/upload-artifact@v4
       with:
         name: Ibkar-App
-        path: '**/build/outputs/apk/**/*.apk'
+        path: '**/*.apk'
+        if-no-files-found: error
