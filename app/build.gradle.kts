@@ -20,6 +20,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
         create("release") {
             val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
             storeFile = file(keystorePath)
@@ -111,7 +112,5 @@ dependencies {
 
     ksp(libs.androidx.room.compiler)
     ksp(libs.moshi.kotlin.codegen)
-
-implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
-
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
 }
