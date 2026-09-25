@@ -1,23 +1,12 @@
-name: Build Android APK
-on:
-  push:
-    branches: [ "main", "master" ]
-  workflow_dispatch:
-
+name: Build APK
+on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-    - name: Run Build
-      run: |
-        chmod +x gradlew
-        ./gradlew assembleDebug --no-daemon --stacktrace
+      with: {java-version: '17', distribution: 'temurin'}
+    - run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
     - uses: actions/upload-artifact@v4
-      with:
-        name: Ibkar-App
-        path: '**/*.apk'
+      with: {name: Ibkar-App, path: '**/*.apk'}
