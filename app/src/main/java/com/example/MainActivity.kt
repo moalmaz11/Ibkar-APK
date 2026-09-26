@@ -213,7 +213,6 @@ fun MainAppContent(
         mutableStateOf(notificationSettingsPrefs.getInt("prayer_calc_method", 0))
     }
 
-    // استخراج اسم المدينة
     var cityNameState by remember { mutableStateOf("جاري التحديد...") }
     LaunchedEffect(userLat, userLng) {
         withContext(Dispatchers.IO) {
@@ -266,7 +265,6 @@ fun MainAppContent(
         mutableStateOf<UpcomingPrayerInfo?>(null)
     }
 
-    // ترشيد استهلاك البطارية: تشغيل العدّاد بالثانية فقط عندما يكون اليوم الحالي معروضاً
     LaunchedEffect(todayTimes, userLat, userLng, isTodaySelected) {
         if (isTodaySelected) {
             while (true) {
@@ -389,7 +387,6 @@ fun MainAppContent(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // الشريط العلوي
             item {
                 Row(
                     modifier = Modifier
@@ -463,7 +460,6 @@ fun MainAppContent(
                 }
             }
 
-            // بطاقة التحفيز
             item {
                 MotivationHeaderCard(
                     totalDoneItems = totalDoneItems,
@@ -474,7 +470,6 @@ fun MainAppContent(
                 )
             }
 
-            // بطاقة الهوية الإيمانية
             item {
                 val rankSpec = viewModel.getRankInfo(dailyPoints)
                 Card(
@@ -784,7 +779,7 @@ fun MainAppContent(
                 }
             }
 
-            // شريط إشعار القفل عند استعراض يوم سابق
+            // شريط تنبيه قفل التعديل للأيام السابقة
             if (!isTodaySelected) {
                 item {
                     Box(
@@ -2648,107 +2643,192 @@ fun DhikrReadingFlow(
     val athkarList = if (type == "morning") {
         listOf(
             StepDhikr(
-                text = "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لا إِلَهَ إِلا اللَّهُ وَحْدَهُ لا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.",
+                text = "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لا إِلَهَ إِلا اللَّهُ وَحْدَهُ لا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذَا الْيَوْمِ وَخَيْرَ مَا بَعْدَهُ، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِي هَذَا الْيَوْمِ وَشَرِّ مَا بَعْدَهُ، رَبِّ أَعُوذُ بِكَ مِنَ الْكَسَلِ وَسُوءِ الْكِبَرِ، رَبِّ أَعُوذُ بِكَ مِنْ عَذَابٍ فِي النَّارِ وَعَذَابٍ فِي الْقَبْرِ.",
                 count = 1,
-                benefit = "سؤال خير اليوم والتعوذ من شره ومن عذاب القبر"
+                benefit = "سؤال خير اليوم كله واستعاذة من الشر والكسل وعذاب القبر"
             ),
             StepDhikr(
                 text = "اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ، خَلَقْتَنـي وَأَنا عَبْـدُك، وَأَنا عَلـى عَهْـدِكَ وَوَعْـدِكَ ما اسْتَـطَعْت، أَعـوذُ بِكَ مِنْ شَـرِّ ما صَنَـعْت، أَبـوءُ لَـكَ بِنِعْـمَتِـكَ عَلَـيَّ وَأَبـوءُ بِذَنْـبي فَاغْفِـرْ لي فَإِنَّـهُ لا يَغْفِـرُ الذُّنـوبَ إِلاّ أَنْتَ.",
                 count = 1,
-                benefit = "سيد الاستغفار - من قالها موقناً بها ومات دخل الجنة"
+                benefit = "سيد الاستغفار - من قالها موقناً بها ومات من يومه دخل الجنة"
             ),
             StepDhikr(
-                text = "قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ.",
+                text = "اللَّهُمَّ إِنِّي أَصْبَحْتُ أُشْهِدُكَ، وَأُشْهِدُ حَمَلَةَ عَرْشِكَ، وَمَلَائِكَتَكَ، وَجَمِيعَ خَلْقِكَ، أَنَّكَ أَنْتَ اللَّهُ لَا إِلَهَ إِلَّا أَنْتَ وَحْدَكَ لَا شَرِيكَ لَكَ، وَأَنَّ مُحَمَّداً عَبْدُكَ وَرَسُولُكَ.",
+                count = 4,
+                benefit = "من قالها أربع مرات حين يصبح أو يمسي أعتقه الله من النار"
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ مَا أَصْبَحَ بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وَحْدَكَ لَا شَرِيكَ لَكَ، فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ.",
+                count = 1,
+                benefit = "من قالها حين يصبح فقد أدى شكر يومه"
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لَا إِلَهَ إِلَّا أَنْتَ. اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْكُفْرِ وَالْفَقْرِ، وَأَعُوذُ بِكَ مِنْ عَذَابِ الْقَبْرِ، لَا إِلَهَ إِلَّا أَنْتَ.",
                 count = 3,
-                benefit = "تكفيك من كل شيء"
+                benefit = "سؤال العافية وحفظ الحواس والسلامة من الفقر وعذاب القبر"
             ),
             StepDhikr(
-                text = "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، مِن شَرِّ مَا خَلَقَ، وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ، وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ.",
+                text = "حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ.",
+                count = 7,
+                benefit = "من قالها سبع مرات كفاه الله ما أهمه من أمر الدنيا والآخرة"
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي، اللَّهُمَّ اسْتُرْ عَوْرَاتِي وَآمِنْ رَوْعَاتِي، اللَّهُمَّ احْفَظْنِي مِنْ بَيْنِ يَدَيَّ وَمِنْ خَلْفِي وَعَنْ يَمِينِي وَعَنْ شِمَالِي وَمِنْ فَوْقِي، وَأَعُوذُ بِعَظَمَتِكَ أَنْ أُغْتَالَ مِنْ تَحْتِي.",
+                count = 1,
+                benefit = "دعاء الحفظ الإلهي الشامل من جميع الجهات الست"
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ عَالِمَ الْغَيْبِ وَالشَّهَادَةِ، فَاطِرَ السَّمَاوَاتِ وَالْأَرْضِ، رَبَّ كُلِّ شَيْءٍ وَمَلِيكَهُ، أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا أَنْتَ، أَعُوذُ بِكَ مِنْ شَرِّ نَفْسِي وَمِنْ شَرِّ الشَّيْطَانِ وَشِرْكِهِ، وَأَنْ أَقْتَرِفَ عَلَى نَفْسِي سُوءاً أَوْ أَجُرَّهُ إِلَى مُسْلِمٍ.",
+                count = 1,
+                benefit = "التحصين من كيد الشيطان وشرور النفس والإضرار بالآخرين"
+            ),
+            StepDhikr(
+                text = "بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.",
                 count = 3,
-                benefit = "الحفظ والتحصين من الشرور والحسد"
+                benefit = "من قالها ثلاثاً لم يضره شيء قط"
             ),
             StepDhikr(
-                text = "قُلْ أَعُوذُ بِرَبِّ النَّاسِ، مَلِكِ النَّاسِ، إِلَهِ النَّاسِ، مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ، الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ، مِنَ الْجِنَّةِ وَالنَّاسِ.",
-                count = 3,
-                benefit = "التحصين من وساوس الشياطين"
-            ),
-            StepDhikr(
-                text = "بِسـمِ اللهِ الذي لا يَضُـرُّ مَعَ اسمِـهِ شَيءٌ في الأرْضِ وَلا في السّمـاءِ وَهـوَ السّمـيعُ العَلـيم.",
-                count = 3,
-                benefit = "لم يضره شيء في ذلك اليوم"
-            ),
-            StepDhikr(
-                text = "رَضيـتُ بِاللهِ رَبَّـاً وَبِالإسْلامِ ديـناً وَبِمُحَـمَّدٍ صلى الله عليه وسلم نَبِيّـاً.",
+                text = "رَضِيتُ بِاللَّهِ رَبّاً، وَبِالْإِسْلَامِ دِيناً، وَبِمُحَمَّدٍ صلى الله عليه وسلم نَبِيّاً.",
                 count = 3,
                 benefit = "كان حقاً على الله أن يرضيه يوم القيامة"
             ),
             StepDhikr(
                 text = "يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ، أَصْلِحْ لِي شَأْنِي كُلَّهُ، وَلَا تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ.",
                 count = 1,
-                benefit = "طلب المعونة والتسديد في شؤون الحياة كلها"
+                benefit = "التبرؤ من الحول والقوة وطلب العون والتوفيق الإلهي"
             ),
             StepDhikr(
-                text = "سُبْحـانَ اللهِ وَبِحَمْـدِهِ عَدَدَ خَلْـقِه، وَرِضـا نَفْسِـه، وَزِنَـةَ عَـرْشِـه، وَمِـدادَ كَلِمـاتِـه.",
+                text = "أَصْبَحْنَا عَلَى فِطْرَةِ الْإِسْلَامِ، وَعَلَى كَلِمَةِ الْإِخْلَاصِ، وَعَلَى دِينِ نَبِيِّنَا مُحَمَّدٍ صلى الله عليه وسلم، وَعَلَى مِلَّةِ أَبِينَا إِبْرَاهِيمَ حَنِيفاً مُسْلِماً وَمَا كَانَ مِنَ الْمُشْرِكِينَ.",
+                count = 1,
+                benefit = "تجديد العهد على التوحيد الخالص وسنة النبي صلى الله عليه وسلم"
+            ),
+            StepDhikr(
+                text = "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ: عَدَدَ خَلْقِهِ، وَرِضَا نَفْسِهِ، وَزِنَةَ عَرْشِهِ، وَمِدَادَ كَلِمَاتِهِ.",
                 count = 3,
-                benefit = "أجر عظيم يزن عبادة ساعات طويلة"
+                benefit = "تعدل في الأجر ساعات طويلة من الذكر والتسبيح"
             ),
             StepDhikr(
-                text = "سُبْحـانَ اللهِ وَبِحَمْـدِهِ.",
+                text = "قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ.",
+                count = 3,
+                benefit = "سورة الإخلاص - تعدل ثلث القرآن وتكفي من كل شيء"
+            ),
+            StepDhikr(
+                text = "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، مِن شَرِّ مَا خَلَقَ، وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ، وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ.",
+                count = 3,
+                benefit = "سورة الفلق - وقاية تامة من الحسد والسحر وشرور الليل"
+            ),
+            StepDhikr(
+                text = "قُلْ أَعُوذُ بِرَبِّ النَّاسِ، مَلِكِ النَّاسِ، إِلَهِ النَّاسِ، مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ، الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ، مِنَ الْجِنَّةِ وَالنَّاسِ.",
+                count = 3,
+                benefit = "سورة الناس - الحفظ والاعتصام من وسوسة شياطين الإنس والجن"
+            ),
+            StepDhikr(
+                text = "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.",
+                count = 10,
+                benefit = "كانت له عدل أربع رقاب من ولد إسماعيل وكُتب له بها أجر عظيم"
+            ),
+            StepDhikr(
+                text = "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ.",
                 count = 100,
-                benefit = "حُطّت خطاياه وإن كانت مثل زبد البحر"
+                benefit = "حُطّت خطاياه وإن كانت مثل زبد البحر، ولم يأتِ أحد بأفضل مما جاء به"
+            ),
+            StepDhikr(
+                text = "أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ.",
+                count = 100,
+                benefit = "اتباع لهدي النبي صلى الله عليه وسلم وممحاة للذنوب والخطايا"
             )
         )
     } else {
         listOf(
             StepDhikr(
-                text = "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لا إِلَهَ إِلا اللَّهُ وَحْدَهُ لا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.",
+                text = "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لا إِلَهَ إِلا اللَّهُ وَحْدَهُ لا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذِهِ اللَّيْلَةِ وَخَيْرَ مَا بَعْدَهَا، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِي هَذِهِ اللَّيْلَةِ وَشَرِّ مَا بَعْدَهَا، رَبِّ أَعُوذُ بِكَ مِنَ الْكَسَلِ وَسُوءِ الْكِبَرِ، رَبِّ أَعُوذُ بِكَ مِنْ عَذَابٍ فِي النَّارِ وَعَذَابٍ فِي الْقَبْرِ.",
                 count = 1,
-                benefit = "سؤال خير الليلة والتعوذ من شرها"
+                benefit = "سؤال خير الليلة والتحصين من الشرور والعذاب"
             ),
             StepDhikr(
                 text = "اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ، خَلَقْتَنـي وَأَنا عَبْـدُك، وَأَنا عَلـى عَهْـدِكَ وَوَعْـدِكَ ما اسْتَـطَعْت، أَعـوذُ بِكَ مِنْ شَـرِّ ما صَنَـعْت، أَبـوءُ لَـكَ بِنِعْـمَتِـكَ عَلَـيَّ وَأَبـوءُ بِذَنْـبي فَاغْفِـرْ لي فَإِنَّـهُ لا يَغْفِـرُ الذُّنـوبَ إِلاّ أَنْتَ.",
                 count = 1,
-                benefit = "سيد الاستغفار - من قالها ومات من ليلته دخل الجنة"
+                benefit = "سيد الاستغفار - من مات من ليلته دخل الجنة"
             ),
             StepDhikr(
-                text = "قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ.",
-                count = 3,
-                benefit = "تكفيك من كل شيء"
+                text = "اللَّهُمَّ إِنِّي أَمْسَيْتُ أُشْهِدُكَ، وَأُشْهِدُ حَمَلَةَ عَرْشِكَ، وَمَلَائِكَتَكَ، وَجَمِيعَ خَلْقِكَ، أَنَّكَ أَنْتَ اللَّهُ لَا إِلَهَ إِلَّا أَنْتَ وَحْدَكَ لَا شَرِيكَ لَكَ، وَأَنَّ مُحَمَّداً عَبْدُكَ وَرَسُولُكَ.",
+                count = 4,
+                benefit = "من قالها أربع مرات حين يمسي أعتقه الله من النار"
             ),
             StepDhikr(
-                text = "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، مِن شَرِّ مَا خَلَقَ، وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ، وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ.",
-                count = 3,
-                benefit = "الحفظ والتحصين من الشرور والحسد"
+                text = "اللَّهُمَّ مَا أَمْسَى بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وَحْدَكَ لَا شَرِيكَ لَكَ، فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ.",
+                count = 1,
+                benefit = "من قالها حين يمسي فقد أدى شكر ليلته"
             ),
             StepDhikr(
-                text = "قُلْ أَعُوذُ بِرَبِّ النَّاسِ، مَلِكِ النَّاسِ، إِلَهِ النَّاسِ، مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ، الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ، مِنَ الْجِنَّةِ وَالنَّاسِ.",
+                text = "اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لَا إِلَهَ إِلَّا أَنْتَ. اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْكُفْرِ وَالْفَقْرِ، وَأَعُوذُ بِكَ مِنْ عَذَابِ الْقَبْرِ، لَا إِلَهَ إِلَّا أَنْتَ.",
                 count = 3,
-                benefit = "التحصين من وساوس الشياطين"
+                benefit = "حفظ العافية والبدن والنجاة من عذاب القبر"
             ),
             StepDhikr(
-                text = "أَعُوذُ بِكَلِمَاتِ اللهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.",
-                count = 3,
-                benefit = "لم يضره شيء في تلك الليلة"
+                text = "حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ.",
+                count = 7,
+                benefit = "كفاية الله للمؤمن من كل ما يقلقه ويهمه"
             ),
             StepDhikr(
-                text = "بِسـمِ اللهِ الذي لا يَضُـرُّ مَعَ اسمِـهِ شَيءٌ في الأرْضِ وَلا في السّمـاءِ وَهـوَ السّمـيعُ العَلـيم.",
-                count = 3,
-                benefit = "حماية تامة من فواجع الأقدار"
+                text = "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي، اللَّهُمَّ اسْتُرْ عَوْرَاتِي وَآمِنْ رَوْعَاتِي، اللَّهُمَّ احْفَظْنِي مِنْ بَيْنِ يَدَيَّ وَمِنْ خَلْفِي وَعَنْ يَمِينِي وَعَنْ شِمَالِي وَمِنْ فَوْقِي، وَأَعُوذُ بِعَظَمَتِكَ أَنْ أُغْتَالَ مِنْ تَحْتِي.",
+                count = 1,
+                benefit = "الحفظ من الفواجع والمهالك طوال الليل"
             ),
             StepDhikr(
-                text = "رَضيـتُ بِاللهِ رَبَّـاً وَبِالإسْلامِ ديـناً وَبِمُحَـمَّدٍ صلى الله عليه وسلم نَبِيّـاً.",
+                text = "اللَّهُمَّ عَالِمَ الْغَيْبِ وَالشَّهَادَةِ، فَاطِرَ السَّمَاوَاتِ وَالْأَرْضِ، رَبَّ كُلِّ شَيْءٍ وَمَلِيكَهُ، أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا أَنْتَ، أَعُوذُ بِكَ مِنْ شَرِّ نَفْسِي وَمِنْ شَرِّ الشَّيْطَانِ وَشِرْكِهِ، وَأَنْ أَقْتَرِفَ عَلَى نَفْسِي سُوءاً أَوْ أَجُرَّهُ إِلَى مُسْلِمٍ.",
+                count = 1,
+                benefit = "الحماية من فتن الليل وكيد الشياطين"
+            ),
+            StepDhikr(
+                text = "بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.",
                 count = 3,
-                benefit = "كان حقاً على الله أن يرضيه يوم القيامة"
+                benefit = "حفظ تام من كل سوء ومكروه"
+            ),
+            StepDhikr(
+                text = "أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.",
+                count = 3,
+                benefit = "من قالها لم يضره سم ولا دابة ولا حية في تلك الليلة"
+            ),
+            StepDhikr(
+                text = "رَضِيتُ بِاللَّهِ رَبّاً، وَبِالْإِسْلَامِ دِيناً، وَبِمُحَمَّدٍ صلى الله عليه وسلم نَبِيّاً.",
+                count = 3,
+                benefit = "حق على الله أن يرضي قائله"
             ),
             StepDhikr(
                 text = "يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ، أَصْلِحْ لِي شَأْنِي كُلَّهُ، وَلَا تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ.",
                 count = 1,
-                benefit = "طلب التسديد والتوكل على الله"
+                benefit = "صلاح الأحوال والاستغناء برحمة الله"
             ),
             StepDhikr(
-                text = "سُبْحـانَ اللهِ وَبِحَمْـدِهِ.",
+                text = "أَمْسَيْنَا عَلَى فِطْرَةِ الْإِسْلَامِ، وَعَلَى كَلِمَةِ الْإِخْلَاصِ، وَعَلَى دِينِ نَبِيِّنَا مُحَمَّدٍ صلى الله عليه وسلم، وَعَلَى مِلَّةِ أَبِينَا إِبْرَاهِيمَ حَنِيفاً مُسْلِماً وَمَا كَانَ مِنَ الْمُشْرِكِينَ.",
+                count = 1,
+                benefit = "المبيت على فطرة التوحيد والإسلام"
+            ),
+            StepDhikr(
+                text = "قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ.",
+                count = 3,
+                benefit = "تكفيك من كل سوء"
+            ),
+            StepDhikr(
+                text = "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، مِن شَرِّ مَا خَلَقَ، وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ، وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ.",
+                count = 3,
+                benefit = "الحفظ من شر غاسق إذا وقب والحاسدين"
+            ),
+            StepDhikr(
+                text = "قُلْ أَعُوذُ بِرَبِّ النَّاسِ، مَلِكِ النَّاسِ، إِلَهِ النَّاسِ، مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ، الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ، مِنَ الْجِنَّةِ وَالنَّاسِ.",
+                count = 3,
+                benefit = "الحفظ من كل وسواس خناس"
+            ),
+            StepDhikr(
+                text = "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.",
+                count = 10,
+                benefit = "حرز من الشيطان وحط للأوزار"
+            ),
+            StepDhikr(
+                text = "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ.",
                 count = 100,
-                benefit = "غفران الذنوب ورفعة الدرجات"
+                benefit = "مغفرة الذنوب ورفعة الدرجات"
             )
         )
     }
@@ -2757,22 +2837,38 @@ fun DhikrReadingFlow(
     val sharedPrefs = remember(context) {
         context.getSharedPreferences("dhikr_flow_prefs", android.content.Context.MODE_PRIVATE)
     }
+
+    val todayDateStr = remember { DateHelper.getTodayDateString(context) }
+    val savedDateKey = "dhikr_${type}_date"
+    val lastDate = sharedPrefs.getString(savedDateKey, "")
+
     val savedIndexKey = "dhikr_${type}_index"
     val savedCountKey = "dhikr_${type}_count"
+
+    val isNewDay = lastDate != todayDateStr
+    if (isNewDay) {
+        sharedPrefs.edit().apply {
+            putString(savedDateKey, todayDateStr)
+            putInt(savedIndexKey, 0)
+            putInt(savedCountKey, athkarList[0].count)
+            apply()
+        }
+    }
+
     var currentIndex by remember { 
-        mutableStateOf(sharedPrefs.getInt(savedIndexKey, 0)) 
+        mutableStateOf(if (isNewDay) 0 else sharedPrefs.getInt(savedIndexKey, 0)) 
     }
     val totalCount = athkarList.size
 
     val currentCountsLeft = remember(type) {
         mutableStateListOf<Int>().apply {
-            val savedIndex = sharedPrefs.getInt(savedIndexKey, 0)
+            val savedIndex = if (isNewDay) 0 else sharedPrefs.getInt(savedIndexKey, 0)
             for (i in 0 until totalCount) {
                 if (i < savedIndex) {
                     add(0)
                 } else if (i == savedIndex) {
                     val defaultCount = athkarList[i].count
-                    val savedLeft = sharedPrefs.getInt(savedCountKey, defaultCount)
+                    val savedLeft = if (isNewDay) defaultCount else sharedPrefs.getInt(savedCountKey, defaultCount)
                     if (savedLeft in 1..defaultCount) {
                         add(savedLeft)
                     } else {
@@ -2787,6 +2883,7 @@ fun DhikrReadingFlow(
 
     fun saveProgress(index: Int, countLeft: Int) {
         sharedPrefs.edit().apply {
+            putString(savedDateKey, todayDateStr)
             putInt(savedIndexKey, index)
             putInt(savedCountKey, countLeft)
             apply()
@@ -3157,446 +3254,6 @@ fun DhikrReadingFlow(
                                 )
                             }
                         }
-                    }
-                }
-            }
-        }
-    }
-}
-
-data class StepDhikr(
-    val text: String,
-    val count: Int,
-    val benefit: String
-)
-
-fun updateLocationAndPrayerTimes(
-    context: android.content.Context,
-    prefs: android.content.SharedPreferences,
-    onComplete: (Boolean, String, Float, Float) -> Unit
-) {
-    val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as? android.location.LocationManager
-    if (locationManager == null) {
-        onComplete(false, "تعذر الوصول لخدمة الموقع.", 30.0444f, 31.2357f)
-        return
-    }
-
-    val isGpsEnabled = locationManager.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)
-    val isNetworkEnabled = locationManager.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)
-
-    if (!isGpsEnabled && !isNetworkEnabled) {
-        onComplete(false, "يرجى تفعيل خدمة تحديد الموقع (GPS) من إعدادات الهاتف.", 30.0444f, 31.2357f)
-        return
-    }
-
-    val provider = if (isNetworkEnabled) {
-        android.location.LocationManager.NETWORK_PROVIDER
-    } else {
-        android.location.LocationManager.GPS_PROVIDER
-    }
-
-    try {
-        val lastKnownLocation = locationManager.getLastKnownLocation(provider)
-        if (lastKnownLocation != null) {
-            val lat = lastKnownLocation.latitude.toFloat()
-            val lng = lastKnownLocation.longitude.toFloat()
-            
-            prefs.edit().apply {
-                putFloat("user_latitude", lat)
-                putFloat("user_longitude", lng)
-                apply()
-            }
-            
-            try {
-                val intent1 = Intent(context, Class.forName("com.example.widget.CountdownWidgetProvider")).apply {
-                    action = "com.example.widget.REFRESH_COUNTDOWN"
-                }
-                context.sendBroadcast(intent1)
-                val intent2 = Intent(context, Class.forName("com.example.widget.PrayerTimesWidgetProvider")).apply {
-                    action = "com.example.widget.REFRESH_TIMES"
-                }
-                context.sendBroadcast(intent2)
-            } catch (e: Exception) {}
-
-            com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context)
-            onComplete(true, "تم تحديث الموقع ومواقيت الصلاة بنجاح", lat, lng)
-        } else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val executor = androidx.core.content.ContextCompat.getMainExecutor(context)
-                locationManager.getCurrentLocation(
-                    provider,
-                    null,
-                    executor
-                ) { location ->
-                    if (location != null) {
-                        val lat = location.latitude.toFloat()
-                        val lng = location.longitude.toFloat()
-                        prefs.edit().apply {
-                            putFloat("user_latitude", lat)
-                            putFloat("user_longitude", lng)
-                            apply()
-                        }
-                        try {
-                            val intent1 = Intent(context, Class.forName("com.example.widget.CountdownWidgetProvider")).apply {
-                                action = "com.example.widget.REFRESH_COUNTDOWN"
-                            }
-                            context.sendBroadcast(intent1)
-                            val intent2 = Intent(context, Class.forName("com.example.widget.PrayerTimesWidgetProvider")).apply {
-                                action = "com.example.widget.REFRESH_TIMES"
-                            }
-                            context.sendBroadcast(intent2)
-                        } catch (e: Exception) {}
-                        com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context)
-                        onComplete(true, "تم تحديث الموقع ومواقيت الصلاة بنجاح", lat, lng)
-                    } else {
-                        onComplete(false, "تعذر تحديد الإحداثيات الحالية بدقة.", 30.0444f, 31.2357f)
-                    }
-                }
-            } else {
-                onComplete(false, "تعذر تحديد الإحداثيات الحالية بدقة.", 30.0444f, 31.2357f)
-            }
-        }
-    } catch (e: SecurityException) {
-        onComplete(false, "لم يتم منح إذن الوصول إلى الموقع.", 30.0444f, 31.2357f)
-    } catch (e: Exception) {
-        onComplete(false, "حدث خطأ: ${e.localizedMessage}", 30.0444f, 31.2357f)
-    }
-}
-
-@Composable
-fun CelebrationEffects(modifier: Modifier = Modifier) {
-    val confettiList = remember {
-        List(40) {
-            val randomX = (1..1000).random().toFloat() / 1000f
-            val randomY = - (1..1500).random().toFloat() / 1000f
-            val speed = 0.0035f + (1..60).random().toFloat() / 10000f
-            val size = 8f + (1..14).random().toFloat()
-            val colors = listOf(
-                Color(0xFFFFD700),
-                Color(0xFFFF4500),
-                Color(0xFF10B981),
-                Color(0xFF3B82F6),
-                Color(0xFFFF69B4),
-                Color(0xFF9370DB),
-                Color(0xFF34D399)
-            )
-            ConfettiState(
-                x = randomX,
-                y = randomY,
-                speed = speed,
-                size = size,
-                color = colors.random(),
-                angle = (1..360).random().toFloat(),
-                spin = -4f + (1..8).random().toFloat(),
-                type = (0..3).random(),
-                drift = -0.001f + (1..20).random().toFloat() / 10000f
-            )
-        }
-    }
-
-    val balloonList = remember {
-        List(12) {
-            val randomX = 0.05f + (1..900).random().toFloat() / 1000f
-            val randomY = 1.05f + (1..1000).random().toFloat() / 1000f
-            val speed = 0.0025f + (1..40).random().toFloat() / 10000f
-            val size = 40f + (1..20).random().toFloat()
-            val colors = listOf(
-                Color(0xFFFF5C5C),
-                Color(0xFF3CA9FF),
-                Color(0xFFFFCA28),
-                Color(0xFF10B981),
-                Color(0xFFEC407A)
-            )
-            BalloonState(
-                x = randomX,
-                y = randomY,
-                speed = speed,
-                size = size,
-                color = colors.random(),
-                waveOffset = (1..100).random().toFloat(),
-                waveAmplitude = 0.012f + (1..10).random().toFloat() / 1000f
-            )
-        }
-    }
-
-    var tick by remember { mutableStateOf(0L) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            kotlinx.coroutines.delay(16)
-            confettiList.forEach { p ->
-                p.y += p.speed
-                p.x = (p.x + p.drift).coerceIn(0f, 1f)
-                p.angle += p.spin
-                if (p.y > 1f) {
-                    p.y = -0.05f
-                }
-            }
-            balloonList.forEach { b ->
-                b.y -= b.speed
-                if (b.y < -0.2f) {
-                    b.y = 1.1f
-                    b.x = 0.05f + (1..900).random().toFloat() / 1000f
-                }
-            }
-            tick++
-        }
-    }
-
-    Canvas(modifier = modifier) {
-        val _tick = tick
-        val width = size.width
-        val height = size.height
-
-        confettiList.forEach { p ->
-            val px = p.x * width
-            val py = p.y * height
-            val pSize = p.size
-            if (p.y in 0f..1f) {
-                drawContext.canvas.save()
-                drawContext.canvas.translate(px, py)
-                drawContext.canvas.rotate(p.angle)
-                when (p.type) {
-                    0 -> drawCircle(color = p.color, radius = pSize / 2)
-                    1 -> drawRect(color = p.color, size = androidx.compose.ui.geometry.Size(pSize, pSize / 2))
-                    2 -> {
-                        val triPath = Path().apply {
-                            moveTo(0f, -pSize / 2)
-                            lineTo(pSize / 2, pSize / 2)
-                            lineTo(-pSize / 2, pSize / 2)
-                            close()
-                        }
-                        drawPath(path = triPath, color = p.color)
-                    }
-                    else -> drawRect(color = p.color, size = androidx.compose.ui.geometry.Size(pSize * 1.4f, 3f))
-                }
-                drawContext.canvas.restore()
-            }
-        }
-
-        balloonList.forEach { b ->
-            val bx = (b.x + kotlin.math.sin(b.y * 7f + b.waveOffset) * b.waveAmplitude) * width
-            val by = b.y * height
-            val bw = b.size
-            val bh = b.size * 1.25f
-            if (b.y in -0.15f..1.1f) {
-                val stringPath = Path().apply {
-                    moveTo(bx, by + bh)
-                    cubicTo(
-                        bx - 10f, by + bh + bh * 0.4f,
-                        bx + 10f, by + bh + bh * 0.8f,
-                        bx, by + bh + bh * 1.2f
-                    )
-                }
-                drawPath(
-                    path = stringPath,
-                    color = Color.LightGray.copy(alpha = 0.35f),
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5.dp.toPx())
-                )
-
-                val knotPath = Path().apply {
-                    moveTo(bx, by + bh)
-                    lineTo(bx - 4.dp.toPx(), by + bh + 6.dp.toPx())
-                    lineTo(bx + 4.dp.toPx(), by + bh + 6.dp.toPx())
-                    close()
-                }
-                drawPath(path = knotPath, color = b.color)
-
-                drawOval(
-                    color = b.color,
-                    topLeft = androidx.compose.ui.geometry.Offset(bx - bw / 2f, by),
-                    size = androidx.compose.ui.geometry.Size(bw, bh)
-                )
-
-                drawOval(
-                    color = Color.White.copy(alpha = 0.35f),
-                    topLeft = androidx.compose.ui.geometry.Offset(bx - bw * 0.28f, by + bh * 0.12f),
-                    size = androidx.compose.ui.geometry.Size(bw * 0.22f, bh * 0.22f)
-                )
-            }
-        }
-    }
-}
-
-class ConfettiState(
-    var x: Float,
-    var y: Float,
-    val speed: Float,
-    val size: Float,
-    val color: Color,
-    var angle: Float,
-    val spin: Float,
-    val type: Int,
-    val drift: Float
-)
-
-class BalloonState(
-    var x: Float,
-    var y: Float,
-    val speed: Float,
-    val size: Float,
-    val color: Color,
-    val waveOffset: Float,
-    val waveAmplitude: Float
-)
-
-@Composable
-fun WorshipCelebrationDialog(
-    title: String,
-    description: String,
-    darkTheme: Boolean = true,
-    onDismiss: () -> Unit
-) {
-    androidx.compose.ui.window.Dialog(
-        onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false
-        )
-    ) {
-        var isAnimateOpen by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) {
-            isAnimateOpen = true
-        }
-        val scale by androidx.compose.animation.core.animateFloatAsState(
-            targetValue = if (isAnimateOpen) 1f else 0.82f,
-            animationSpec = spring(
-                dampingRatio = 0.72f,
-                stiffness = androidx.compose.animation.core.Spring.StiffnessLow
-            ),
-            label = "scale_anim"
-        )
-        val alpha by androidx.compose.animation.core.animateFloatAsState(
-            targetValue = if (isAnimateOpen) 1f else 0f,
-            animationSpec = tween(durationMillis = 350),
-            label = "alpha_anim"
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.55f)),
-            contentAlignment = Alignment.Center
-        ) {
-            CelebrationEffects(modifier = Modifier.fillMaxSize())
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
-                    .widthIn(max = 400.dp)
-                    .graphicsLayer(
-                        scaleX = scale,
-                        scaleY = scale,
-                        alpha = alpha
-                    )
-                    .shadow(
-                        12.dp,
-                        RoundedCornerShape(24.dp),
-                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                    )
-                    .border(
-                        BorderStroke(
-                            1.dp,
-                            Brush.linearGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                )
-                            )
-                        ),
-                        RoundedCornerShape(24.dp)
-                    ),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .background(
-                                Brush.radialGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.01f)
-                                    )
-                                ),
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val infiniteTransition = rememberInfiniteTransition(label = "pulse_trans")
-                        val pulseScale by infiniteTransition.animateFloat(
-                            initialValue = 1.0f,
-                            targetValue = 1.12f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(1200, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "pulse_scale"
-                        )
-                        
-                        Box(
-                            modifier = Modifier.scale(pulseScale),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "🏆",
-                                style = androidx.compose.ui.text.TextStyle(fontSize = 32.sp),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        ),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Text(
-                        text = description,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f),
-                            lineHeight = 22.sp
-                        ),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(2.dp))
-
-                    Button(
-                        onClick = onDismiss,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                    ) {
-                        Text(
-                            text = "الحمد لله",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
                     }
                 }
             }
