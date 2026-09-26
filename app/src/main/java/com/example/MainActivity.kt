@@ -784,6 +784,29 @@ fun MainAppContent(
                 }
             }
 
+            // شريط إشعار القفل عند استعراض يوم سابق
+            if (!isTodaySelected) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (darkTheme) Color(0xFF1E293B) else Color(0xFFE2E8F0))
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "🔒 سجل الأيام السابقة للعرض فقط حفاظاً على دقة البيانات",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = if (darkTheme) Color(0xFF94A3B8) else Color(0xFF475569)
+                            ),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+
             // قائمة الصلوات
             item {
                 Column(
@@ -814,7 +837,7 @@ fun MainAppContent(
                         pointLabel = "+12 نقطة",
                         darkTheme = darkTheme,
                         timeText = getPrayerTimeStr("fajr"),
-                        onToggle = { viewModel.togglePrayer("fajr") }
+                        onToggle = { if (isTodaySelected) viewModel.togglePrayer("fajr") }
                     )
                     PrayerItemRow(
                         name = "الظهر",
@@ -825,7 +848,7 @@ fun MainAppContent(
                         pointLabel = "+12 نقطة",
                         darkTheme = darkTheme,
                         timeText = getPrayerTimeStr("dhuhr"),
-                        onToggle = { viewModel.togglePrayer("dhuhr") }
+                        onToggle = { if (isTodaySelected) viewModel.togglePrayer("dhuhr") }
                     )
                     PrayerItemRow(
                         name = "العصر",
@@ -836,7 +859,7 @@ fun MainAppContent(
                         pointLabel = "+12 نقطة",
                         darkTheme = darkTheme,
                         timeText = getPrayerTimeStr("asr"),
-                        onToggle = { viewModel.togglePrayer("asr") }
+                        onToggle = { if (isTodaySelected) viewModel.togglePrayer("asr") }
                     )
                     PrayerItemRow(
                         name = "المغرب",
@@ -847,7 +870,7 @@ fun MainAppContent(
                         pointLabel = "+12 نقطة",
                         darkTheme = darkTheme,
                         timeText = getPrayerTimeStr("maghrib"),
-                        onToggle = { viewModel.togglePrayer("maghrib") }
+                        onToggle = { if (isTodaySelected) viewModel.togglePrayer("maghrib") }
                     )
                     PrayerItemRow(
                         name = "العشاء",
@@ -858,7 +881,7 @@ fun MainAppContent(
                         pointLabel = "+12 نقطة",
                         darkTheme = darkTheme,
                         timeText = getPrayerTimeStr("isha"),
-                        onToggle = { viewModel.togglePrayer("isha") }
+                        onToggle = { if (isTodaySelected) viewModel.togglePrayer("isha") }
                     )
 
                     AnimatedVisibility(visible = prayersDoneCount == 5) {
@@ -972,7 +995,8 @@ fun MainAppContent(
                                 horizontalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
                                 IconButton(
-                                    onClick = { viewModel.setQuranPages(activeRecord.quranPages - 1) },
+                                    onClick = { if (isTodaySelected) viewModel.setQuranPages(activeRecord.quranPages - 1) },
+                                    enabled = isTodaySelected,
                                     modifier = Modifier
                                         .testTag("quran_decrement_btn")
                                         .size(36.dp)
@@ -982,7 +1006,7 @@ fun MainAppContent(
                                     Text(
                                         text = "-",
                                         fontWeight = FontWeight.Bold,
-                                        color = if (darkTheme) Color(0xFF34D399) else Color(0xFF065F46),
+                                        color = (if (darkTheme) Color(0xFF34D399) else Color(0xFF065F46)).copy(alpha = if (isTodaySelected) 1f else 0.35f),
                                         fontSize = 18.sp
                                     )
                                 }
@@ -1000,7 +1024,8 @@ fun MainAppContent(
                                 )
 
                                 IconButton(
-                                    onClick = { viewModel.setQuranPages(activeRecord.quranPages + 1) },
+                                    onClick = { if (isTodaySelected) viewModel.setQuranPages(activeRecord.quranPages + 1) },
+                                    enabled = isTodaySelected,
                                     modifier = Modifier
                                         .testTag("quran_increment_btn")
                                         .size(36.dp)
@@ -1010,7 +1035,7 @@ fun MainAppContent(
                                     Text(
                                         text = "+",
                                         fontWeight = FontWeight.Bold,
-                                        color = if (darkTheme) Color(0xFF022C22) else Color.White,
+                                        color = (if (darkTheme) Color(0xFF022C22) else Color.White).copy(alpha = if (isTodaySelected) 1f else 0.35f),
                                         fontSize = 18.sp
                                     )
                                 }
@@ -1170,7 +1195,8 @@ fun MainAppContent(
                                 )
                                 Checkbox(
                                     checked = activeRecord.morningDhikrDone,
-                                    onCheckedChange = { viewModel.toggleMorningDhikr() },
+                                    enabled = isTodaySelected,
+                                    onCheckedChange = { if (isTodaySelected) viewModel.toggleMorningDhikr() },
                                     colors = CheckboxDefaults.colors(
                                         checkedColor = SuccessGreen,
                                         uncheckedColor = if (darkTheme) Color(0xFF6B7280) else Color(0xFF9CA3AF)
@@ -1233,7 +1259,8 @@ fun MainAppContent(
                                 )
                                 Checkbox(
                                     checked = activeRecord.eveningDhikrDone,
-                                    onCheckedChange = { viewModel.toggleEveningDhikr() },
+                                    enabled = isTodaySelected,
+                                    onCheckedChange = { if (isTodaySelected) viewModel.toggleEveningDhikr() },
                                     colors = CheckboxDefaults.colors(
                                         checkedColor = SuccessGreen,
                                         uncheckedColor = if (darkTheme) Color(0xFF6B7280) else Color(0xFF9CA3AF)
@@ -1339,8 +1366,10 @@ fun MainAppContent(
                                     CircleShape
                                 )
                                 .clickable { 
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.incrementDhikr() 
+                                    if (isTodaySelected) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.incrementDhikr() 
+                                    }
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -1354,7 +1383,7 @@ fun MainAppContent(
                                     )
                                 )
                                 Text(
-                                    text = "اضغط للتسبيح",
+                                    text = if (isTodaySelected) "اضغط للتسبيح" else "للعرض فقط",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = (if (darkTheme) Color.White else Color(0xFF065F46)).copy(alpha = 0.7f),
                                         fontSize = 11.sp,
@@ -1369,21 +1398,23 @@ fun MainAppContent(
                             horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "إعادة ضبط العداد ↺",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = if (darkTheme) Color(0xFF34D399) else Color(0xFF059669),
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.5.sp
-                                ),
-                                modifier = Modifier
-                                    .testTag("dhikr_reset_label")
-                                    .clickable { 
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        viewModel.resetDhikr() 
-                                    }
-                                    .padding(vertical = 4.dp, horizontal = 8.dp)
-                            )
+                            if (isTodaySelected) {
+                                Text(
+                                    text = "إعادة ضبط العداد ↺",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = if (darkTheme) Color(0xFF34D399) else Color(0xFF059669),
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.5.sp
+                                    ),
+                                    modifier = Modifier
+                                        .testTag("dhikr_reset_label")
+                                        .clickable { 
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            viewModel.resetDhikr() 
+                                        }
+                                        .padding(vertical = 4.dp, horizontal = 8.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -1402,12 +1433,14 @@ fun MainAppContent(
             darkTheme = darkTheme,
             onDismiss = { activeDhikrTypeForReading = null },
             onComplete = {
-                val isDoneCurrently = if (activeDhikrTypeForReading == "morning") activeRecord.morningDhikrDone else activeRecord.eveningDhikrDone
-                if (!isDoneCurrently) {
-                    if (activeDhikrTypeForReading == "morning") {
-                        viewModel.toggleMorningDhikr()
-                    } else if (activeDhikrTypeForReading == "evening") {
-                        viewModel.toggleEveningDhikr()
+                if (isTodaySelected) {
+                    val isDoneCurrently = if (activeDhikrTypeForReading == "morning") activeRecord.morningDhikrDone else activeRecord.eveningDhikrDone
+                    if (!isDoneCurrently) {
+                        if (activeDhikrTypeForReading == "morning") {
+                            viewModel.toggleMorningDhikr()
+                        } else if (activeDhikrTypeForReading == "evening") {
+                            viewModel.toggleEveningDhikr()
+                        }
                     }
                 }
                 activeDhikrTypeForReading = null
