@@ -5,14 +5,22 @@
     android:height="108dp"
     android:viewportWidth="512"
     android:viewportHeight="512">
-    <!-- القرص الذهبي المركزي -->
-    <path android:pathData="M256,270m-48,0a48,48 0,1 1,96 0a48,48 0,1 1,-96 0">
+
+    <!-- 1. القوس الذهبي السفلي -->
+    <path
+        android:pathData="M130,340 C190,375 322,375 382,340"
+        android:strokeWidth="16"
+        android:strokeColor="#F59E0B"
+        android:strokeLineCap="round" />
+
+    <!-- 2. القرص الذهبي المركزي المفرغ حوله -->
+    <path android:pathData="M256,270m-46,0a46,46 0,1 1,92 0a46,46 0,1 1,-92 0">
         <aapt:attr name="android:fillColor">
             <gradient
                 android:startX="256"
-                android:startY="318"
+                android:startY="316"
                 android:endX="256"
-                android:endY="222"
+                android:endY="224"
                 android:type="linear">
                 <item android:offset="0.0" android:color="#D97706" />
                 <item android:offset="0.5" android:color="#F59E0B" />
@@ -20,19 +28,14 @@
             </gradient>
         </aapt:attr>
     </path>
-    <!-- القوس الذهبي السفلي -->
-    <path
-        android:pathData="M120,345 C190,380 322,380 392,345"
-        android:strokeWidth="14"
-        android:strokeColor="#F59E0B"
-        android:strokeLineCap="round" />
-    <!-- المنحنى الزمردي العلوي -->
+
+    <!-- 3. المنحنى الزمردي المفرغ (إطار خارجي فقط بدون ملء داخلي) -->
     <path
         android:pathData="M256,105 C285,170 360,210 360,280 C360,335 315,375 256,375 C197,375 152,335 152,280 C152,210 227,170 256,105 Z"
         android:strokeWidth="20"
         android:strokeLineCap="round"
         android:strokeLineJoin="round">
-        <aapt:attr name="android:fillColor">
+        <aapt:attr name="android:strokeColor">
             <gradient
                 android:startX="256"
                 android:startY="375"
@@ -45,8 +48,9 @@
             </gradient>
         </aapt:attr>
     </path>
-    <!-- النقطة العلوية -->
+
+    <!-- 4. النقطة العلوية -->
     <path
-        android:pathData="M256,85m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0"
+        android:pathData="M256,88m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0"
         android:fillColor="#FDE68A" />
 </vector>
