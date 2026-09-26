@@ -1847,9 +1847,9 @@ fun MainAppContent(
                                 textAlign = TextAlign.Center
                             )
                             Text(
-                                text = "تطبيق إسلامي مجاني بالكامل وبدون إعلانات",
+                                text = "صُنع بكل حب مصطفى الماظ",
                                 style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontWeight = FontWeight.Black,
+                                    fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.secondary
                                 ),
                                 textAlign = TextAlign.Center
