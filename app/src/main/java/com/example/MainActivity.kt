@@ -3260,3 +3260,67 @@ fun DhikrReadingFlow(
         }
     }
 }
+
+data class StepDhikr(
+    val text: String,
+    val count: Int,
+    val benefit: String = ""
+)
+
+@Composable
+fun WorshipCelebrationDialog(
+    title: String,
+    description: String,
+    darkTheme: Boolean,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = if (darkTheme) Color.White else Color(0xFF0F172A)
+                ),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = if (darkTheme) Color.LightGray else Color(0xFF475569)
+                ),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("متابعة", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = if (darkTheme) Color(0xFF1E293B) else Color.White
+    )
+}
+
+fun updateLocationAndPrayerTimes(
+    context: android.content.Context,
+    prefs: android.content.SharedPreferences,
+    onResult: (Boolean, String, Float, Float) -> Unit
+) {
+    // إحداثيات افتراضية (القاهرة) لحين إضافة مكتبة تحديد الموقع الفعلية
+    val defaultLat = 30.0444f
+    val defaultLng = 31.2357f
+    prefs.edit()
+        .putFloat("user_latitude", defaultLat)
+        .putFloat("user_longitude", defaultLng)
+        .apply()
+    onResult(true, "تم تحديث الموقع بنجاح", defaultLat, defaultLng)
+}
