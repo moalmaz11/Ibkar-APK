@@ -6,12 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -36,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -169,6 +162,8 @@ fun MainAppContent(
     var showEditNameDialog by remember { mutableStateOf(false) }
     var inputName by remember { mutableStateOf("") }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showManualLocationDialog by remember { mutableStateOf(false) }
+    var manualLocationInput by remember { mutableStateOf("") }
     var activeDhikrTypeForReading by remember { mutableStateOf<String?>(null) }
     
     val celebrationPrefs = remember(context) {
@@ -219,20 +214,21 @@ fun MainAppContent(
     var showNotificationDetailsDialog by remember { mutableStateOf(false) }
 
     var userLat by remember {
-        mutableStateOf(notificationSettingsPrefs.getFloat("user_latitude", com.example.notification.PrayerTimeCalculator.DEFAULT_LATITUDE.toFloat()))
+        mutableStateOf(notificationSettingsPrefs.getFloat("user_latitude", 30.0444f))
     }
     var userLng by remember {
-        mutableStateOf(notificationSettingsPrefs.getFloat("user_longitude", com.example.notification.PrayerTimeCalculator.DEFAULT_LONGITUDE.toFloat()))
+        mutableStateOf(notificationSettingsPrefs.getFloat("user_longitude", 31.2357f))
     }
     var prayerCalcMethod by remember {
         mutableStateOf(notificationSettingsPrefs.getInt("prayer_calc_method", 0))
     }
 
-    var cityNameState by remember { mutableStateOf(if (isArabic) "جاري التحديد..." else "Detecting...") }
+    var cityNameState by remember { mutableStateOf(notificationSettingsPrefs.getString("user_city_name", if (isArabic) "موقعك الحالي" else "Current Location") ?: (if (isArabic) "موقعك الحالي" else "Current Location")) }
+    
     LaunchedEffect(userLat, userLng, isArabic) {
         withContext(Dispatchers.IO) {
             try {
-                val locale = if (isArabic) Locale("ar") else Locale("en")
+                val locale = if (isArabic) Locale("ar") else Locale.ENGLISH
                 val geocoder = Geocoder(context, locale)
                 val addresses = geocoder.getFromLocation(userLat.toDouble(), userLng.toDouble(), 1)
                 val fallbackText = if (isArabic) "موقعك الحالي" else "Current Location"
@@ -240,12 +236,9 @@ fun MainAppContent(
                     val addr = addresses[0]
                     val city = addr.locality ?: addr.subAdminArea ?: addr.adminArea ?: fallbackText
                     cityNameState = city
-                } else {
-                    cityNameState = fallbackText
+                    notificationSettingsPrefs.edit().putString("user_city_name", city).apply()
                 }
-            } catch (e: Exception) {
-                cityNameState = if (isArabic) "موقعك الحالي" else "Current Location"
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -350,11 +343,8 @@ fun MainAppContent(
             Manifest.permission.ACCESS_COARSE_LOCATION
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
         
-        if (!hasCoarseLocation) {
-            kotlinx.coroutines.delay(800L)
-            locationLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-        } else {
-            com.example.updateLocationAndPrayerTimes(context, notificationSettingsPrefs) { success, msg, newLat, newLng ->
+        if (hasCoarseLocation) {
+            com.example.updateLocationAndPrayerTimes(context, notificationSettingsPrefs) { success, _, newLat, newLng ->
                 if (success) {
                     userLat = newLat
                     userLng = newLng
@@ -434,51 +424,46 @@ fun MainAppContent(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                .clickable {
+                                    manualLocationInput = ""
+                                    showManualLocationDialog = true
+                                }
+                                .padding(horizontal = 8.dp, vertical = 5.dp)
                         ) {
-                            Text(
-                                text = "📍 $cityNameState",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "📍 $cityNameState",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 )
-                            )
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Location",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
                         }
                     }
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    IconButton(
+                        onClick = { showSettingsDialog = true },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
                     ) {
-                        IconButton(
-                            onClick = { showSettingsDialog = true },
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = if (isArabic) "الإعدادات" else "Settings",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                text = if (isArabic) "الإصدار 1.0" else "Version 1.0",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = if (isArabic) "الإعدادات" else "Settings",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
@@ -496,6 +481,15 @@ fun MainAppContent(
 
             item {
                 val rankSpec = viewModel.getRankInfo(dailyPoints)
+                val englishRank = when {
+                    dailyPoints >= 100 -> "Foremost in Good Deeds"
+                    dailyPoints >= 80 -> "Righteous Believer"
+                    dailyPoints >= 60 -> "Devoted Worshipper"
+                    dailyPoints >= 40 -> "Steadfast Muslim"
+                    dailyPoints >= 20 -> "Mindful Believer"
+                    else -> "Seeker of Reward"
+                }
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -631,7 +625,7 @@ fun MainAppContent(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = if (isArabic) rankSpec.title else "Rank ${rankSpec.title}",
+                                        text = if (isArabic) rankSpec.title else englishRank,
                                         style = MaterialTheme.typography.headlineSmall.copy(
                                             fontWeight = FontWeight.Black,
                                             color = if (darkTheme) Color.White else Color(0xFF047857)
@@ -703,7 +697,7 @@ fun MainAppContent(
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = if (totalDoneItems == 8) {
-                                        if (isArabic) "ما شاء الله! أتممت جميع عبادات اليوم بالكامل 🎉" else "Mashallah! You completed all daily worships 🎉"
+                                        if (isArabic) "ما شاء الله! أتممت جميع عبادات اليوم بالكامل 🎉" else "Mashallah! All daily worships completed 🎉"
                                     } else {
                                         if (isArabic) "أتممت $totalDoneItems من 8 عبادات، واصل الطاعة!" else "Completed $totalDoneItems of 8, keep going!"
                                     },
@@ -1401,7 +1395,7 @@ fun MainAppContent(
                                 )
                                 Text(
                                     text = if (isTodaySelected) {
-                                        if (isArabic) "اضغط للتسبيح" else "Tap to tasbeeh"
+                                        if (isArabic) "اضغط للتسبيح" else "Tap to count"
                                     } else {
                                         if (isArabic) "للعرض فقط" else "View only"
                                     },
@@ -1445,6 +1439,91 @@ fun MainAppContent(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
+
+    if (showManualLocationDialog) {
+        AlertDialog(
+            onDismissRequest = { showManualLocationDialog = false },
+            title = {
+                Text(
+                    text = if (isArabic) "تحديد الموقع يدوياً" else "Set Location Manually",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = if (isArabic) "اكتب اسم مدينتك أو دولتك لتحديث مواقيت الصلاة تلقائياً:" else "Enter your city or country name to update prayer times:",
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = manualLocationInput,
+                        onValueChange = { manualLocationInput = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text(if (isArabic) "مثال: الإسكندرية، الرياض، دبي" else "e.g. Cairo, London, Dubai") }
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (manualLocationInput.isNotBlank()) {
+                            val cityQuery = manualLocationInput.trim()
+                            coroutineScope.launch(Dispatchers.IO) {
+                                try {
+                                    val geocoder = Geocoder(context, if (isArabic) Locale("ar") else Locale.ENGLISH)
+                                    val results = geocoder.getFromLocationName(cityQuery, 1)
+                                    if (!results.isNullOrEmpty()) {
+                                        val loc = results[0]
+                                        val newLat = loc.latitude.toFloat()
+                                        val newLng = loc.longitude.toFloat()
+                                        val resolvedName = loc.locality ?: loc.adminArea ?: cityQuery
+                                        
+                                        notificationSettingsPrefs.edit()
+                                            .putFloat("user_latitude", newLat)
+                                            .putFloat("user_longitude", newLng)
+                                            .putString("user_city_name", resolvedName)
+                                            .apply()
+                                            
+                                        withContext(Dispatchers.Main) {
+                                            userLat = newLat
+                                            userLng = newLng
+                                            cityNameState = resolvedName
+                                            com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context)
+                                            Toast.makeText(context, if (isArabic) "تم تحديث الموقع لمواقيت $resolvedName" else "Location updated to $resolvedName", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } else {
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(context, if (isArabic) "لم يتم العثور على المدينة، يرجى كتابتها بدقة" else "City not found, please check spelling", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, if (isArabic) "حدث خطأ أثناء البحث، تأكد من الاتصال بالإنترنت" else "Search error, check internet connection", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        }
+                        showManualLocationDialog = false
+                    }
+                ) {
+                    Text(if (isArabic) "تأكيد" else "Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showManualLocationDialog = false }) {
+                    Text(if (isArabic) "إلغاء" else "Cancel")
+                }
+            }
+        )
     }
 
     if (activeDhikrTypeForReading != null) {
@@ -1747,7 +1826,8 @@ fun MainAppContent(
                             ) {
                                 Button(
                                     onClick = {
-                                        locationLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                                        manualLocationInput = ""
+                                        showManualLocationDialog = true
                                     },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.primary
@@ -1756,7 +1836,7 @@ fun MainAppContent(
                                     contentPadding = PaddingValues(vertical = 4.dp, horizontal = 12.dp)
                                 ) {
                                     Text(
-                                        text = if (isArabic) "تحديث الموقع" else "Update Location",
+                                        text = if (isArabic) "تغيير يدوي" else "Set Manually",
                                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                                     )
                                 }
@@ -1925,6 +2005,14 @@ fun MainAppContent(
                                 ),
                                 textAlign = TextAlign.Center
                             )
+                            Text(
+                                text = if (isArabic) "صُنع بكل حب مصطفى الماظ" else "Made with love by Mostafa Almaz",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.secondary
+                                ),
+                                textAlign = TextAlign.Center
+                            )
                             Spacer(modifier = Modifier.height(6.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -1957,6 +2045,38 @@ fun MainAppContent(
                                         ),
                                         textAlign = TextAlign.Center
                                     )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF1877F2))
+                                        .clickable {
+                                            try {
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.facebook.com/ibkar.application"))
+                                                context.startActivity(intent)
+                                            } catch (e: Exception) {}
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.White),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "f",
+                                            color = Color(0xFF1877F2),
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                                fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif
+                                            ),
+                                            modifier = Modifier.offset(y = (-1).dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -2649,95 +2769,233 @@ fun DhikrReadingFlow(
     val haptic = LocalHapticFeedback.current
 
     val athkarList = if (type == "morning") {
-        if (isArabic) {
-            listOf(
-                StepDhikr("أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ...", 1, "سؤال خير اليوم كله واستعاذة من الشر والكسل وعذاب القبر"),
-                StepDhikr("اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ...", 1, "سيد الاستغفار - من قالها موقناً بها ومات من يومه دخل الجنة"),
-                StepDhikr("اللَّهُمَّ إِنِّي أَصْبَحْتُ أُشْهِدُكَ، وَأُشْهِدُ حَمَلَةَ عَرْشِكَ...", 4, "من قالها أربع مرات حين يصبح أو يمسي أعتقه الله من النار"),
-                StepDhikr("اللَّهُمَّ مَا أَصْبَحَ بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ...", 1, "من قالها حين يصبح فقد أدى شكر يومه"),
-                StepDhikr("اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي...", 3, "سؤال العافية وحفظ الحواس والسلامة من الفقر وعذاب القبر"),
-                StepDhikr("حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ...", 7, "من قالها سبع مرات كفاه الله ما أهمه من أمر الدنيا والآخرة"),
-                StepDhikr("اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ...", 1, "دعاء الحفظ الإلهي الشامل من جميع الجهات الست"),
-                StepDhikr("اللَّهُمَّ عَالِمَ الْغَيْبِ وَالشَّهَادَةِ، فَاطِرَ السَّمَاوَاتِ وَالْأَرْضِ...", 1, "التحصين من كيد الشيطان وشرور النفس والإضرار بالآخرين"),
-                StepDhikr("بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ...", 3, "من قالها ثلاثاً لم يضره شيء قط"),
-                StepDhikr("رَضِيتُ بِاللَّهِ رَبّاً، وَبِالْإِسْلَامِ دِيناً، وَبِمُحَمَّدٍ نَبِيّاً.", 3, "كان حقاً على الله أن يرضيه يوم القيامة"),
-                StepDhikr("يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ...", 1, "التبرؤ من الحول والقوة وطلب العون والتوفيق الإلهي"),
-                StepDhikr("أَصْبَحْنَا عَلَى فِطْرَةِ الْإِسْلَامِ، وَعَلَى كَلِمَةِ الْإِخْلَاصِ...", 1, "تجديد العهد على التوحيد الخالص وسنة النبي صلى الله عليه وسلم"),
-                StepDhikr("سُبْحَانَ اللَّهِ وَبِحَمْدِهِ: عَدَدَ خَلْقِهِ، وَرِضَا نَفْسِهِ...", 3, "تعدل في الأجر ساعات طويلة من الذكر والتسبيح"),
-                StepDhikr("قُلْ هُوَ اللَّهُ أَحَدٌ...", 3, "سورة الإخلاص - تعدل ثلث القرآن وتكفي من كل شيء"),
-                StepDhikr("قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ...", 3, "سورة الفلق - وقاية تامة من الحسد والسحر وشرور الليل"),
-                StepDhikr("قُلْ أَعُوذُ بِرَبِّ النَّاسِ...", 3, "سورة الناس - الحفظ والاعتصام من وسوسة شياطين الإنس والجن"),
-                StepDhikr("لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ...", 10, "كانت له عدل أربع رقاب من ولد إسماعيل وكُتب له بها أجر عظيم"),
-                StepDhikr("سُبْحَانَ اللَّهِ وَبِحَمْدِهِ.", 100, "حُطّت خطاياه وإن كانت مثل زبد البحر، ولم يأتِ أحد بأفضل مما جاء به"),
-                StepDhikr("أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ.", 100, "اتباع لهدي النبي صلى الله عليه وسلم وممحاة للذنوب والخطايا")
+        listOf(
+            StepDhikr(
+                text = "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لا إِلَهَ إِلا اللَّهُ وَحْدَهُ لا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذَا الْيَوْمِ وَخَيْرَ مَا بَعْدَهُ، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِي هَذَا الْيَوْمِ وَشَرِّ مَا بَعْدَهُ، رَبِّ أَعُوذُ بِكَ مِنَ الْكَسَلِ وَسُوءِ الْكِبَرِ، رَبِّ أَعُوذُ بِكَ مِنْ عَذَابٍ فِي النَّارِ وَعَذَابٍ فِي الْقَبْرِ.",
+                count = 1,
+                benefit = "سؤال خير اليوم كله واستعاذة من الشر والكسل وعذاب القبر",
+                translation = "We have reached the morning and at this very time unto Allah belongs all sovereignty and praise. None has the right to be worshipped except Allah alone, without partner..."
+            ),
+            StepDhikr(
+                text = "اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ، خَلَقْتَنـي وَأَنا عَبْـدُك، وَأَنا عَلـى عَهْـدِكَ وَوَعْـدِكَ ما اسْتَـطَعْت، أَعـوذُ بِكَ مِنْ شَـرِّ ما صَنَـعْت، أَبـوءُ لَـكَ بِنِعْـمَتِـكَ عَلَـيَّ وَأَبـوءُ بِذَنْـبي فَاغْفِـرْ لي فَإِنَّـهُ لا يَغْفِـرُ الذُّنـوبَ إِلاّ أَنْتَ.",
+                count = 1,
+                benefit = "سيد الاستغفار - من قالها موقناً بها ومات من يومه دخل الجنة",
+                translation = "O Allah, You are my Lord, none has the right to be worshipped except You, You created me and I am Your servant..."
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ إِنِّي أَصْبَحْتُ أُشْهِدُكَ، وَأُشْهِدُ حَمَلَةَ عَرْشِكَ، وَمَلَائِكَتَكَ، وَجَمِيعَ خَلْقِكَ، أَنَّكَ أَنْتَ اللَّهُ لَا إِلَهَ إِلَّا أَنْتَ وَحْدَكَ لَا شَرِيكَ لَكَ، وَأَنَّ مُحَمَّداً عَبْدُكَ وَرَسُولُكَ.",
+                count = 4,
+                benefit = "من قالها أربع مرات حين يصبح أو يمسي أعتقه الله من النار",
+                translation = "O Allah, I have entered a new morning and call upon You, the bearers of Your Throne, Your angels and all creation to bear witness that You are Allah..."
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ مَا أَصْبَحَ بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وَحْدَكَ لَا شَرِيكَ لَكَ، فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ.",
+                count = 1,
+                benefit = "من قالها حين يصبح فقد أدى شكر يومه",
+                translation = "O Allah, whatever blessing has been received by me or anyone of Your creation, it is from You alone, without partner..."
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لَا إِلَهَ إِلَّا أَنْتَ. اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْكُفْرِ وَالْفَقْرِ، وَأَعُوذُ بِكَ مِنْ عَذَابِ الْقَبْرِ، لَا إِلَهَ إِلَّا أَنْتَ.",
+                count = 3,
+                benefit = "سؤال العافية وحفظ الحواس والسلامة من الفقر وعذاب القبر",
+                translation = "O Allah, grant health to my body; O Allah, grant health to my hearing; O Allah, grant health to my sight. There is no deity except You..."
+            ),
+            StepDhikr(
+                text = "حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ.",
+                count = 7,
+                benefit = "من قالها سبع مرات كفاه الله ما أهمه من أمر الدنيا والآخرة",
+                translation = "Allah is sufficient for me. There is none worthy of worship but Him. I have placed my trust in Him, He is Lord of the Mighty Throne."
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي، اللَّهُمَّ اسْتُرْ عَوْرَاتِي وَآمِنْ رَوْعَاتِي، اللَّهُمَّ احْفَظْنِي مِنْ بَيْنِ يَدَيَّ وَمِنْ خَلْفِي وَعَنْ يَمِينِي وَعَنْ شِمَالِي وَمِنْ فَوْقِي، وَأَعُوذُ بِعَظَمَتِكَ أَنْ أُغْتَالَ مِنْ تَحْتِي.",
+                count = 1,
+                benefit = "دعاء الحفظ الإلهي الشامل من جميع الجهات الست",
+                translation = "O Allah, I ask You for pardon and well-being in this life and the next. O Allah, safeguard me from before me and behind me, on my right and on my left..."
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ عَالِمَ الْغَيْبِ وَالشَّهَادَةِ، فَاطِرَ السَّمَاوَاتِ وَالْأَرْضِ، رَبَّ كُلِّ شَيْءٍ وَمَلِيكَهُ، أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا أَنْتَ، أَعُوذُ بِكَ مِنْ شَرِّ نَفْسِي وَمِنْ شَرِّ الشَّيْطَانِ وَشِرْكِهِ، وَأَنْ أَقْتَرِفَ عَلَى نَفْسِي سُوءاً أَوْ أَجُرَّهُ إِلَى مُسْلِمٍ.",
+                count = 1,
+                benefit = "التحصين من كيد الشيطان وشرور النفس والإضرار بالآخرين",
+                translation = "O Allah, Knower of the unseen and the visible, Creator of the heavens and the earth, Lord and Sovereign of all things..."
+            ),
+            StepDhikr(
+                text = "بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.",
+                count = 3,
+                benefit = "من قالها ثلاثاً لم يضره شيء قط",
+                translation = "In the Name of Allah, with Whose Name nothing can cause harm in the earth nor in the heavens, and He is the All-Hearing, the All-Knowing."
+            ),
+            StepDhikr(
+                text = "رَضِيتُ بِاللَّهِ رَبّاً، وَبِالْإِسْلَامِ دِيناً، وَبِمُحَمَّدٍ صلى الله عليه وسلم نَبِيّاً.",
+                count = 3,
+                benefit = "كان حقاً على الله أن يرضيه يوم القيامة",
+                translation = "I am pleased with Allah as my Lord, with Islam as my religion, and with Muhammad (peace and blessings be upon him) as my Prophet."
+            ),
+            StepDhikr(
+                text = "يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ، أَصْلِحْ لِي شَأْنِي كُلَّهُ، وَلَا تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ.",
+                count = 1,
+                benefit = "التبرؤ من الحول والقوة وطلب العون والتوفيق الإلهي",
+                translation = "O Ever Living One, O Self-Existing and Supporter of all, by Your mercy I seek assistance; rectify all my affairs and do not leave me to myself even for a blink of an eye."
+            ),
+            StepDhikr(
+                text = "أَصْبَحْنَا عَلَى فِطْرَةِ الْإِسْلَامِ، وَعَلَى كَلِمَةِ الْإِخْلَاصِ، وَعَلَى دِينِ نَبِيِّنَا مُحَمَّدٍ صلى الله عليه وسلم، وَعَلَى مِلَّةِ أَبِينَا إِبْرَاهِيمَ حَنِيفاً مُسْلِماً وَمَا كَانَ مِنَ الْمُشْرِكِينَ.",
+                count = 1,
+                benefit = "تجديد العهد على التوحيد الخالص وسنة النبي صلى الله عليه وسلم",
+                translation = "We enter this morning upon the fitrah of Islam, upon the word of sincere faith, upon the religion of our Prophet Muhammad..."
+            ),
+            StepDhikr(
+                text = "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ: عَدَدَ خَلْقِهِ، وَرِضَا نَفْسِهِ، وَزِنَةَ عَرْشِهِ، وَمِدَادَ كَلِمَاتِهِ.",
+                count = 3,
+                benefit = "تعدل في الأجر ساعات طويلة من الذكر والتسبيح",
+                translation = "Glory is to Allah and praise is to Him, by the number of His creation, according to His pleasure, by the weight of His Throne, and the ink of His words."
+            ),
+            StepDhikr(
+                text = "قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ.",
+                count = 3,
+                benefit = "سورة الإخلاص - تعدل ثلث القرآن وتكفي من كل شيء",
+                translation = "Surah Al-Ikhlas: Say, 'He is Allah, [who is] One, Allah, the Eternal Refuge...'"
+            ),
+            StepDhikr(
+                text = "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، مِن شَرِّ مَا خَلَقَ، وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ، وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ.",
+                count = 3,
+                benefit = "سورة الفلق - وقاية تامة من الحسد والسحر وشرور الليل",
+                translation = "Surah Al-Falaq: Say, 'I seek refuge in the Lord of daybreak, from the evil of that which He created...'"
+            ),
+            StepDhikr(
+                text = "قُلْ أَعُوذُ بِرَبِّ النَّاسِ، مَلِكِ النَّاسِ، إِلَهِ النَّاسِ، مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ، الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ، مِنَ الْجِنَّةِ وَالنَّاسِ.",
+                count = 3,
+                benefit = "سورة الناس - الحفظ والاعتصام من وسوسة شياطين الإنس والجن",
+                translation = "Surah An-Nas: Say, 'I seek refuge in the Lord of mankind, the Sovereign of mankind, the God of mankind...'"
+            ),
+            StepDhikr(
+                text = "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.",
+                count = 10,
+                benefit = "كانت له عدل أربع رقاب من ولد إسماعيل وكُتب له بها أجر عظيم",
+                translation = "None has the right to be worshipped except Allah alone, without partner. To Him belongs all sovereignty and praise..."
+            ),
+            StepDhikr(
+                text = "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ.",
+                count = 100,
+                benefit = "حُطّت خطاياه وإن كانت مثل زبد البحر، ولم يأتِ أحد بأفضل مما جاء به",
+                translation = "Glory is to Allah and praise is to Him."
+            ),
+            StepDhikr(
+                text = "أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ.",
+                count = 100,
+                benefit = "اتباع لهدي النبي صلى الله عليه وسلم وممحاة للذنوب والخطايا",
+                translation = "I ask Allah for forgiveness and repent to Him."
             )
-        } else {
-            listOf(
-                StepDhikr("We have reached the morning and at this very time unto Allah belongs all sovereignty...", 1, "Asking for goodness of the day"),
-                StepDhikr("O Allah, You are my Lord, none has the right to be worshipped except You...", 1, "Sayyid Al-Istighfar - Forgiveness of sins"),
-                StepDhikr("O Allah, I have entered a new morning and call upon You to bear witness...", 4, "Freedom from Hellfire"),
-                StepDhikr("O Allah, whatever blessing has been received by me...", 1, "Fulfilling the day's gratitude"),
-                StepDhikr("O Allah, grant my body health, grant my hearing health...", 3, "Asking for health and protection"),
-                StepDhikr("Allah is sufficient for me. There is none worthy of worship but Him...", 7, "Protection from worries"),
-                StepDhikr("O Allah, I ask You for pardon and well-being in this life and the next...", 1, "Comprehensive divine protection"),
-                StepDhikr("O Allah, Knower of the unseen and the evident, Creator of the heavens...", 1, "Protection from Shaytan and evil of the soul"),
-                StepDhikr("In the Name of Allah with Whose Name there is protection...", 3, "Protection from sudden afflictions"),
-                StepDhikr("I am pleased with Allah as my Lord, with Islam as my religion...", 3, "Allah's pleasure on the Day of Judgement"),
-                StepDhikr("O Ever Living One, O Sustainer of all, by Your mercy I call on You...", 1, "Seeking Allah's help and reliance"),
-                StepDhikr("We have entered a new morning upon the natural religion of Islam...", 1, "Renewal of pure monotheism"),
-                StepDhikr("Glory is to Allah and praise is to Him, by the multitude of His creation...", 3, "Immense continuous reward"),
-                StepDhikr("Surah Al-Ikhlas", 3, "Equals one-third of the Quran"),
-                StepDhikr("Surah Al-Falaq", 3, "Protection from evil"),
-                StepDhikr("Surah An-Nas", 3, "Protection from whispers of Shaytan"),
-                StepDhikr("None has the right to be worshipped but Allah alone...", 10, "Reward of freeing slaves"),
-                StepDhikr("Glory is to Allah and praise is to Him.", 100, "Sins forgiven even if like the foam of the sea"),
-                StepDhikr("I seek the forgiveness of Allah and repent to Him.", 100, "Purification of sins")
-            )
-        }
+        )
     } else {
-        if (isArabic) {
-            listOf(
-                StepDhikr("أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ...", 1, "سؤال خير الليلة والتحصين من الشرور والعذاب"),
-                StepDhikr("اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ...", 1, "سيد الاستغفار - من مات من ليلته دخل الجنة"),
-                StepDhikr("اللَّهُمَّ إِنِّي أَمْسَيْتُ أُشْهِدُكَ، وَأُشْهِدُ حَمَلَةَ عَرْشِكَ...", 4, "من قالها أربع مرات حين يمسي أعتقه الله من النار"),
-                StepDhikr("اللَّهُمَّ مَا أَمْسَى بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ...", 1, "من قالها حين يمسي فقد أدى شكر ليلته"),
-                StepDhikr("اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي...", 3, "حفظ العافية والبدن والنجاة من عذاب القبر"),
-                StepDhikr("حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ...", 7, "كفاية الله للمؤمن من كل ما يقلقه ويهمه"),
-                StepDhikr("اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ...", 1, "الحفظ من الفواجع والمهالك طوال الليل"),
-                StepDhikr("اللَّهُمَّ عَالِمَ الْغَيْبِ وَالشَّهَادَةِ، فَاطِرَ السَّمَاوَاتِ وَالْأَرْضِ...", 1, "الحماية من فتن الليل وكيد الشياطين"),
-                StepDhikr("بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ...", 3, "حفظ تام من كل سوء ومكروه"),
-                StepDhikr("أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.", 3, "من قالها لم يضره سم ولا دابة ولا حية في تلك الليلة"),
-                StepDhikr("رَضِيتُ بِاللَّهِ رَبّاً، وَبِالْإِسْلَامِ دِيناً، وَبِمُحَمَّدٍ نَبِيّاً.", 3, "حق على الله أن يرضي قائله"),
-                StepDhikr("يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ...", 1, "صلاح الأحوال والاستغناء برحمة الله"),
-                StepDhikr("أَمْسَيْنَا عَلَى فِطْرَةِ الْإِسْلَامِ، وَعَلَى كَلِمَةِ الْإِخْلَاصِ...", 1, "المبيت على فطرة التوحيد والإسلام"),
-                StepDhikr("قُلْ هُوَ اللَّهُ أَحَدٌ...", 3, "تكفيك من كل سوء"),
-                StepDhikr("قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ...", 3, "الحفظ من شر غاسق إذا وقب والحاسدين"),
-                StepDhikr("قُلْ أَعُوذُ بِرَبِّ النَّاسِ...", 3, "الحفظ من كل وسواس خناس"),
-                StepDhikr("لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ...", 10, "حرز من الشيطان وحط للأوزار"),
-                StepDhikr("سُبْحَانَ اللَّهِ وَبِحَمْدِهِ.", 100, "مغفرة الذنوب ورفعة الدرجات")
+        listOf(
+            StepDhikr(
+                text = "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لا إِلَهَ إِلا اللَّهُ وَحْدَهُ لا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذِهِ اللَّيْلَةِ وَخَيْرَ مَا بَعْدَهَا، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِي هَذِهِ اللَّيْلَةِ وَشَرِّ مَا بَعْدَهَا، رَبِّ أَعُوذُ بِكَ مِنَ الْكَسَلِ وَسُوءِ الْكِبَرِ، رَبِّ أَعُوذُ بِكَ مِنْ عَذَابٍ فِي النَّارِ وَعَذَابٍ فِي الْقَبْرِ.",
+                count = 1,
+                benefit = "سؤال خير الليلة والتحصين من الشرور والعذاب",
+                translation = "We have reached the evening and at this very time unto Allah belongs all sovereignty and praise. None has the right to be worshipped except Allah alone..."
+            ),
+            StepDhikr(
+                text = "اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ، خَلَقْتَنـي وَأَنا عَبْـدُك، وَأَنا عَلـى عَهْـدِكَ وَوَعْـدِكَ ما اسْتَـطَعْت، أَعـوذُ بِكَ مِنْ شَـرِّ ما صَنَـعْت، أَبـوءُ لَـكَ بِنِعْـمَتِـكَ عَلَـيَّ وَأَبـوءُ بِذَنْـبي فَاغْفِـرْ لي فَإِنَّـهُ لا يَغْفِـرُ الذُّنـوبَ إِلاّ أَنْتَ.",
+                count = 1,
+                benefit = "سيد الاستغفار - من مات من ليلته دخل الجنة",
+                translation = "O Allah, You are my Lord, none has the right to be worshipped except You, You created me and I am Your servant..."
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ إِنِّي أَمْسَيْتُ أُشْهِدُكَ، وَأُشْهِدُ حَمَلَةَ عَرْشِكَ، وَمَلَائِكَتَكَ، وَجَمِيعَ خَلْقِكَ، أَنَّكَ أَنْتَ اللَّهُ لَا إِلَهَ إِلَّا أَنْتَ وَحْدَكَ لَا شَرِيكَ لَكَ، وَأَنَّ مُحَمَّداً عَبْدُكَ وَرَسُولُكَ.",
+                count = 4,
+                benefit = "من قالها أربع مرات حين يمسي أعتقه الله من النار",
+                translation = "O Allah, I have entered a new evening and call upon You, the bearers of Your Throne, Your angels and all creation to bear witness that You are Allah..."
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ مَا أَمْسَى بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وَحْدَكَ لَا شَرِيكَ لَكَ، فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ.",
+                count = 1,
+                benefit = "من قالها حين يمسي فقد أدى شكر ليلته",
+                translation = "O Allah, whatever blessing has been received by me or anyone of Your creation, it is from You alone, without partner..."
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لَا إِلَهَ إِلَّا أَنْتَ. اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْكُفْرِ وَالْفَقْرِ، وَأَعُوذُ بِكَ مِنْ عَذَابِ الْقَبْرِ، لَا إِلَهَ إِلَّا أَنْتَ.",
+                count = 3,
+                benefit = "حفظ العافية والبدن والنجاة من عذاب القبر",
+                translation = "O Allah, grant health to my body; O Allah, grant health to my hearing; O Allah, grant health to my sight. There is no deity except You..."
+            ),
+            StepDhikr(
+                text = "حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ.",
+                count = 7,
+                benefit = "كفاية الله للمؤمن من كل ما يقلقه ويهمه",
+                translation = "Allah is sufficient for me. There is none worthy of worship but Him. I have placed my trust in Him, He is Lord of the Mighty Throne."
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي، اللَّهُمَّ اسْتُرْ عَوْرَاتِي وَآمِنْ رَوْعَاتِي، اللَّهُمَّ احْفَظْنِي مِنْ بَيْنِ يَدَيَّ وَمِنْ خَلْفِي وَعَنْ يَمِينِي وَعَنْ شِمَالِي وَمِنْ فَوْقِي، وَأَعُوذُ بِعَظَمَتِكَ أَنْ أُغْتَالَ مِنْ تَحْتِي.",
+                count = 1,
+                benefit = "الحفظ من الفواجع والمهالك طوال الليل",
+                translation = "O Allah, I ask You for pardon and well-being in this life and the next. O Allah, safeguard me from before me and behind me, on my right and on my left..."
+            ),
+            StepDhikr(
+                text = "اللَّهُمَّ عَالِمَ الْغَيْبِ وَالشَّهَادَةِ، فَاطِرَ السَّمَاوَاتِ وَالْأَرْضِ، رَبَّ كُلِّ شَيْءٍ وَمَلِيكَهُ، أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا أَنْتَ، أَعُوذُ بِكَ مِنْ شَرِّ نَفْسِي وَمِنْ شَرِّ الشَّيْطَانِ وَشِرْكِهِ، وَأَنْ أَقْتَرِفَ عَلَى نَفْسِي سُوءاً أَوْ أَجُرَّهُ إِلَى مُسْلِمٍ.",
+                count = 1,
+                benefit = "الحماية من فتن الليل وكيد الشياطين",
+                translation = "O Allah, Knower of the unseen and the visible, Creator of the heavens and the earth, Lord and Sovereign of all things..."
+            ),
+            StepDhikr(
+                text = "بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.",
+                count = 3,
+                benefit = "حفظ تام من كل سوء ومكروه",
+                translation = "In the Name of Allah, with Whose Name nothing can cause harm in the earth nor in the heavens, and He is the All-Hearing, the All-Knowing."
+            ),
+            StepDhikr(
+                text = "أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.",
+                count = 3,
+                benefit = "من قالها لم يضره سم ولا دابة ولا حية في تلك الليلة",
+                translation = "I seek refuge in the Perfect Words of Allah from the evil of what He has created."
+            ),
+            StepDhikr(
+                text = "رَضِيتُ بِاللَّهِ رَبّاً، وَبِالْإِسْلَامِ دِيناً، وَبِمُحَمَّدٍ صلى الله عليه وسلم نَبِيّاً.",
+                count = 3,
+                benefit = "حق على الله أن يرضي قائله",
+                translation = "I am pleased with Allah as my Lord, with Islam as my religion, and with Muhammad (peace and blessings be upon him) as my Prophet."
+            ),
+            StepDhikr(
+                text = "يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ، أَصْلِحْ لِي شَأْنِي كُلَّهُ، وَلَا تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ.",
+                count = 1,
+                benefit = "صلاح الأحوال والاستغناء برحمة الله",
+                translation = "O Ever Living One, O Self-Existing and Supporter of all, by Your mercy I seek assistance; rectify all my affairs and do not leave me to myself even for a blink of an eye."
+            ),
+            StepDhikr(
+                text = "أَمْسَيْنَا عَلَى فِطْرَةِ الْإِسْلَامِ، وَعَلَى كَلِمَةِ الْإِخْلَاصِ، وَعَلَى دِينِ نَبِيِّنَا مُحَمَّدٍ صلى الله عليه وسلم، وَعَلَى مِلَّةِ أَبِينَا إِبْرَاهِيمَ حَنِيفاً مُسْلِماً وَمَا كَانَ مِنَ الْمُشْرِكِينَ.",
+                count = 1,
+                benefit = "المبيت على فطرة التوحيد والإسلام",
+                translation = "We enter this evening upon the fitrah of Islam, upon the word of sincere faith, upon the religion of our Prophet Muhammad..."
+            ),
+            StepDhikr(
+                text = "قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ.",
+                count = 3,
+                benefit = "تكفيك من كل سوء",
+                translation = "Surah Al-Ikhlas: Say, 'He is Allah, [who is] One, Allah, the Eternal Refuge...'"
+            ),
+            StepDhikr(
+                text = "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، مِن شَرِّ مَا خَلَقَ، وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ، وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ.",
+                count = 3,
+                benefit = "الحفظ من شر غاسق إذا وقب والحاسدين",
+                translation = "Surah Al-Falaq: Say, 'I seek refuge in the Lord of daybreak, from the evil of that which He created...'"
+            ),
+            StepDhikr(
+                text = "قُلْ أَعُوذُ بِرَبِّ النَّاسِ، مَلِكِ النَّاسِ، إِلَهِ النَّاسِ، مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ، الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ، مِنَ الْجِنَّةِ وَالنَّاسِ.",
+                count = 3,
+                benefit = "الحفظ من كل وسواس خناس",
+                translation = "Surah An-Nas: Say, 'I seek refuge in the Lord of mankind, the Sovereign of mankind, the God of mankind...'"
+            ),
+            StepDhikr(
+                text = "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.",
+                count = 10,
+                benefit = "حرز من الشيطان وحط للأوزار",
+                translation = "None has the right to be worshipped except Allah alone, without partner. To Him belongs all sovereignty and praise..."
+            ),
+            StepDhikr(
+                text = "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ.",
+                count = 100,
+                benefit = "مغفرة الذنوب ورفعة الدرجات",
+                translation = "Glory is to Allah and praise is to Him."
             )
-        } else {
-            listOf(
-                StepDhikr("We have reached the evening and at this very time unto Allah belongs all sovereignty...", 1, "Asking for goodness of the night"),
-                StepDhikr("O Allah, You are my Lord, none has the right to be worshipped except You...", 1, "Sayyid Al-Istighfar - Forgiveness of sins"),
-                StepDhikr("O Allah, I have entered a new evening and call upon You to bear witness...", 4, "Freedom from Hellfire"),
-                StepDhikr("O Allah, whatever blessing has been received by me...", 1, "Fulfilling the night's gratitude"),
-                StepDhikr("O Allah, grant my body health, grant my hearing health...", 3, "Asking for health and protection"),
-                StepDhikr("Allah is sufficient for me. There is none worthy of worship but Him...", 7, "Protection from worries"),
-                StepDhikr("O Allah, I ask You for pardon and well-being in this life and the next...", 1, "Comprehensive divine protection"),
-                StepDhikr("O Allah, Knower of the unseen and the evident, Creator of the heavens...", 1, "Protection from Shaytan and evil of the soul"),
-                StepDhikr("In the Name of Allah with Whose Name there is protection...", 3, "Protection from sudden afflictions"),
-                StepDhikr("I seek refuge in the Perfect Words of Allah from the evil of what He has created.", 3, "Protection from harm and evil creatures"),
-                StepDhikr("I am pleased with Allah as my Lord, with Islam as my religion...", 3, "Allah's pleasure on the Day of Judgement"),
-                StepDhikr("O Ever Living One, O Sustainer of all, by Your mercy I call on You...", 1, "Seeking Allah's help and reliance"),
-                StepDhikr("We have entered a new evening upon the natural religion of Islam...", 1, "Renewal of pure monotheism"),
-                StepDhikr("Surah Al-Ikhlas", 3, "Equals one-third of the Quran"),
-                StepDhikr("Surah Al-Falaq", 3, "Protection from evil"),
-                StepDhikr("Surah An-Nas", 3, "Protection from whispers of Shaytan"),
-                StepDhikr("None has the right to be worshipped but Allah alone...", 10, "Reward of freeing slaves"),
-                StepDhikr("Glory is to Allah and praise is to Him.", 100, "Sins forgiven even if like the foam of the sea")
-            )
-        }
+        )
     }
 
     val context = LocalContext.current
@@ -2948,27 +3206,40 @@ fun DhikrReadingFlow(
                             contentAlignment = Alignment.Center
                         ) {
                             Column(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxWidth(),
-                                    contentAlignment = Alignment.Center
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
                                     Text(
                                         text = currentDhikr.text,
                                         style = MaterialTheme.typography.titleLarge.copy(
                                             lineHeight = 36.sp,
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 19.sp,
+                                            fontSize = 20.sp,
                                             color = textColor
                                         ),
                                         textAlign = TextAlign.Center,
                                         modifier = Modifier.fillMaxWidth()
                                     )
+
+                                    if (!isArabic && currentDhikr.translation.isNotEmpty()) {
+                                        Text(
+                                            text = currentDhikr.translation,
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                lineHeight = 22.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                fontSize = 13.sp,
+                                                color = if (darkTheme) Color(0xFF94A3B8) else Color(0xFF475569)
+                                            ),
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
                                 }
 
                                 Spacer(modifier = Modifier.height(16.dp))
@@ -3182,7 +3453,8 @@ fun DhikrReadingFlow(
 data class StepDhikr(
     val text: String,
     val count: Int,
-    val benefit: String = ""
+    val benefit: String = "",
+    val translation: String = ""
 )
 
 @Composable
@@ -3238,11 +3510,7 @@ fun updateLocationAndPrayerTimes(
     prefs: android.content.SharedPreferences,
     onResult: (Boolean, String, Float, Float) -> Unit
 ) {
-    val defaultLat = 30.0444f
-    val defaultLng = 31.2357f
-    prefs.edit()
-        .putFloat("user_latitude", defaultLat)
-        .putFloat("user_longitude", defaultLng)
-        .apply()
+    val defaultLat = prefs.getFloat("user_latitude", 30.0444f)
+    val defaultLng = prefs.getFloat("user_longitude", 31.2357f)
     onResult(true, "تم تحديث الموقع بنجاح", defaultLat, defaultLng)
 }
