@@ -7,13 +7,13 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.media.AudioAttributes
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
-import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.example.MainActivity
+import com.example.R
 import com.example.data.DailyRecord
 import com.example.data.DateHelper
 import com.example.data.WorshipDatabase
@@ -23,19 +23,44 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 
 object PrayerNotificationManager {
-    const val CHANNEL_ID = "PRAYER_REMINDERS_CHANNEL"
+    const val PRAYER_CHANNEL_ID = "PRAYER_REMINDERS_CHANNEL"
+    const val DHIKR_CHANNEL_ID = "DHIKR_REMINDERS_CHANNEL"
 
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "تنبيهات تطبيق إِبْكَـار"
-            val descriptionText = "إشعارات مواقيت الصلاة وأذكار الصباح والمساء"
-            val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
-                description = descriptionText
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            val audioAttributes = AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .build()
+
+            // 1. قناة الصلاة (بصوت الأذان)
+            val prayerSoundUri = android.net.Uri.parse("android.resource://${context.packageName}/raw/adhan")
+            val prayerChannel = NotificationChannel(
+                PRAYER_CHANNEL_ID,
+                "تنبيهات الصلاة",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "إشعارات مواقيت الصلاة بصوت الأذان"
+                setSound(prayerSoundUri, audioAttributes)
                 enableVibration(true)
             }
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
+
+            // 2. قناة الأذكار (بنغمة هادئة)
+            val dhikrSoundUri = android.net.Uri.parse("android.resource://${context.packageName}/raw/dhikr")
+            val dhikrChannel = NotificationChannel(
+                DHIKR_CHANNEL_ID,
+                "تنبيهات الأذكار",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "تذكير بقراءة أذكار الصباح والمساء"
+                setSound(dhikrSoundUri, audioAttributes)
+                enableVibration(true)
+            }
+
+            notificationManager.createNotificationChannel(prayerChannel)
+            notificationManager.createNotificationChannel(dhikrChannel)
         }
     }
 
@@ -43,6 +68,8 @@ object PrayerNotificationManager {
         val sharedPrefs = context.getSharedPreferences("notification_settings", Context.MODE_PRIVATE)
         val enabled = sharedPrefs.getBoolean("notify_all", true)
         if (!enabled) return
+
+        val isDhikr = prayerKey.contains("dhikr")
 
         if (prayerKey == "morning_dhikr") {
             val dhikrEnabled = sharedPrefs.getBoolean("notify_morning_dhikr", true)
@@ -55,6 +82,7 @@ object PrayerNotificationManager {
             if (!prayersEnabled) return
         }
 
+        // إعداد زر (تمت الصلاة / قراءة الأذكار) ليحفظ في قاعدة البيانات
         val intentYes = Intent(context, PrayerActionReceiver::class.java).apply {
             action = "ACTION_PRAYER_DONE"
             putExtra("PRAYER_KEY", prayerKey)
@@ -67,6 +95,7 @@ object PrayerNotificationManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // إعداد الضغط على الإشعار لفتح التطبيق
         val mainIntent = Intent(context, MainActivity::class.java).apply {
             if (prayerKey == "morning_dhikr") {
                 putExtra("OPEN_DHIKR", "morning")
@@ -82,13 +111,12 @@ object PrayerNotificationManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val isDhikr = prayerKey.contains("dhikr")
         val contentTitle = if (prayerKey == "morning_dhikr") {
             "موعد أذكار الصباح 🌅"
         } else if (prayerKey == "evening_dhikr") {
             "موعد أذكار المساء 🌇"
         } else {
-            "حان الآن موعد صلاة $prayerArabicName 🕌"
+            "حان الآن موعد صلاة $prayerArabicName"
         }
 
         val contentText = if (isDhikr) {
@@ -97,19 +125,22 @@ object PrayerNotificationManager {
             "حي على الصلاة.. حي على الفلاح، لا تؤخر صلاتك عن وقتها"
         }
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+        val channelId = if (isDhikr) DHIKR_CHANNEL_ID else PRAYER_CHANNEL_ID
+        val iconRes = if (isDhikr) R.drawable.ic_notification_dhikr else R.drawable.ic_notification_prayer
+
+        val builder = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(iconRes)
             .setContentTitle(contentTitle)
             .setContentText(contentText)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(if (isDhikr) NotificationCompat.PRIORITY_DEFAULT else NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingMainIntent)
             .setAutoCancel(true)
 
         if (isDhikr) {
             builder.addAction(
                 android.R.drawable.ic_menu_agenda,
-                "قراءة الأذكار الآن",
-                pendingMainIntent
+                "تمت القراءة ✓",
+                pendingIntentYes
             )
         } else {
             builder.addAction(
@@ -125,28 +156,84 @@ object PrayerNotificationManager {
 
     fun scheduleSinglePrayerReminder(context: Context, prayerKey: String) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        
         val sharedPrefs = context.getSharedPreferences("notification_settings", Context.MODE_PRIVATE)
-        val lat = sharedPrefs.getFloat("user_latitude", PrayerTimeCalculator.DEFAULT_LATITUDE.toFloat()).toDouble()
-        val lng = sharedPrefs.getFloat("user_longitude", PrayerTimeCalculator.DEFAULT_LONGITUDE.toFloat()).toDouble()
-        val offsetMinutes = sharedPrefs.getInt("prayer_offset_minutes", 0)
+        
+        var triggerMillis: Long = 0
+        val isDhikr = prayerKey.contains("dhikr")
 
-        val localCalendar = PrayerTimeCalculator.getLocalCalendar(lat, lng)
-        val year = localCalendar.get(Calendar.YEAR)
-        val month = localCalendar.get(Calendar.MONTH) + 1
-        val day = localCalendar.get(Calendar.DAY_OF_MONTH)
+        if (isDhikr) {
+            // حساب موعد الأذكار بناءً على الوقت الذي يختاره المستخدم في الإعدادات
+            val hour = if (prayerKey == "morning_dhikr") sharedPrefs.getInt("morning_dhikr_hour", 6) else sharedPrefs.getInt("evening_dhikr_hour", 17)
+            val minute = if (prayerKey == "morning_dhikr") sharedPrefs.getInt("morning_dhikr_minute", 0) else sharedPrefs.getInt("evening_dhikr_minute", 0)
+            
+            val targetCal = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, minute)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            if (targetCal.timeInMillis < System.currentTimeMillis()) {
+                targetCal.add(Calendar.DAY_OF_YEAR, 1)
+            }
+            triggerMillis = targetCal.timeInMillis
+            
+        } else {
+            // حساب مواقيت الصلاة بناءً على الإحداثيات
+            val lat = sharedPrefs.getFloat("user_latitude", PrayerTimeCalculator.DEFAULT_LATITUDE.toFloat()).toDouble()
+            val lng = sharedPrefs.getFloat("user_longitude", PrayerTimeCalculator.DEFAULT_LONGITUDE.toFloat()).toDouble()
+            val offsetMinutes = sharedPrefs.getInt("prayer_offset_minutes", 0)
 
-        val times = PrayerTimeCalculator.calculatePrayerTimes(year, month, day, lat, lng)
-        val time = times[prayerKey] ?: return
+            val localCalendar = PrayerTimeCalculator.getLocalCalendar(lat, lng)
+            val year = localCalendar.get(Calendar.YEAR)
+            val month = localCalendar.get(Calendar.MONTH) + 1
+            val day = localCalendar.get(Calendar.DAY_OF_MONTH)
 
-        var hour = time.first
-        var minute = time.second
+            val times = PrayerTimeCalculator.calculatePrayerTimes(year, month, day, lat, lng)
+            val time = times[prayerKey] ?: return
 
-        val fivePrayers = listOf("fajr", "dhuhr", "asr", "maghrib", "isha")
-        if (prayerKey in fivePrayers) {
+            var hour = time.first
+            var minute = time.second
+
             val totalMin = hour * 60 + minute + offsetMinutes
             hour = (totalMin / 60) % 24
             minute = totalMin % 60
+
+            val timezoneOffset = PrayerTimeCalculator.getUserTimezoneOffset(year, month, day, lat, lng)
+            val targetCal = Calendar.getInstance(java.util.TimeZone.getTimeZone("GMT")).apply {
+                set(Calendar.YEAR, year)
+                set(Calendar.MONTH, month - 1)
+                set(Calendar.DAY_OF_MONTH, day)
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, minute)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+
+            triggerMillis = targetCal.timeInMillis - (timezoneOffset * 3600000.0).toLong()
+
+            if (triggerMillis < System.currentTimeMillis()) {
+                targetCal.add(Calendar.DAY_OF_YEAR, 1)
+                val tomYear = targetCal.get(Calendar.YEAR)
+                val tomMonth = targetCal.get(Calendar.MONTH) + 1
+                val tomDay = targetCal.get(Calendar.DAY_OF_MONTH)
+
+                val tomTimes = PrayerTimeCalculator.calculatePrayerTimes(tomYear, tomMonth, tomDay, lat, lng)
+                val tomTime = tomTimes[prayerKey] ?: Pair(hour, minute)
+                var tomHour = tomTime.first
+                var tomMin = tomTime.second
+                val tomTotalMin = tomHour * 60 + tomMin + offsetMinutes
+                tomHour = (tomTotalMin / 60) % 24
+                tomMin = tomTotalMin % 60
+
+                val tomOffset = PrayerTimeCalculator.getUserTimezoneOffset(tomYear, tomMonth, tomDay, lat, lng)
+                targetCal.apply {
+                    set(Calendar.HOUR_OF_DAY, tomHour)
+                    set(Calendar.MINUTE, tomMin)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                triggerMillis = targetCal.timeInMillis - (tomOffset * 3600000.0).toLong()
+            }
         }
 
         val intent = Intent(context, PrayerNotificationReceiver::class.java).apply {
@@ -159,49 +246,7 @@ object PrayerNotificationManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val timezoneOffset = PrayerTimeCalculator.getUserTimezoneOffset(year, month, day, lat, lng)
-        val targetCal = Calendar.getInstance(java.util.TimeZone.getTimeZone("GMT")).apply {
-            set(Calendar.YEAR, year)
-            set(Calendar.MONTH, month - 1)
-            set(Calendar.DAY_OF_MONTH, day)
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-
-        var triggerMillis = targetCal.timeInMillis - (timezoneOffset * 3600000.0).toLong()
-
-        if (triggerMillis < System.currentTimeMillis()) {
-            targetCal.add(Calendar.DAY_OF_YEAR, 1)
-            val tomYear = targetCal.get(Calendar.YEAR)
-            val tomMonth = targetCal.get(Calendar.MONTH) + 1
-            val tomDay = targetCal.get(Calendar.DAY_OF_MONTH)
-
-            val tomTimes = PrayerTimeCalculator.calculatePrayerTimes(tomYear, tomMonth, tomDay, lat, lng)
-            val tomTime = tomTimes[prayerKey] ?: Pair(hour, minute)
-            var tomHour = tomTime.first
-            var tomMin = tomTime.second
-            if (prayerKey in fivePrayers) {
-                val totalMin = tomHour * 60 + tomMin + offsetMinutes
-                tomHour = (totalMin / 60) % 24
-                tomMin = totalMin % 60
-            }
-
-            val tomOffset = PrayerTimeCalculator.getUserTimezoneOffset(tomYear, tomMonth, tomDay, lat, lng)
-            targetCal.apply {
-                set(Calendar.HOUR_OF_DAY, tomHour)
-                set(Calendar.MINUTE, tomMin)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }
-            triggerMillis = targetCal.timeInMillis - (tomOffset * 3600000.0).toLong()
-        }
-
-        val calendar = Calendar.getInstance().apply {
-            timeInMillis = triggerMillis
-        }
-
+        // استخدام Exact Alarms للحفاظ على دقة الإشعارات وتجاوز سكون البطارية
         try {
             val canScheduleExact = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 alarmManager.canScheduleExactAlarms()
@@ -211,19 +256,18 @@ object PrayerNotificationManager {
 
             if (canScheduleExact) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    val alarmClockInfo = AlarmManager.AlarmClockInfo(calendar.timeInMillis, pendingIntent)
+                    val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerMillis, pendingIntent)
                     alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
                 } else {
-                    alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+                    alarmManager.set(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
                 }
-                Log.d("PrayerNotification", "Scheduled reminder for $prayerKey at ${calendar.time}")
             } else {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
                 } else {
-                    alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+                    alarmManager.set(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
                 }
             }
         } catch (e: Exception) {
@@ -253,7 +297,7 @@ class PrayerNotificationReceiver : BroadcastReceiver() {
             else -> "الصلاة"
         }
         PrayerNotificationManager.sendPrayerNotification(context, prayerKey, arabicName)
-        PrayerNotificationManager.scheduleSinglePrayerReminder(context, prayerKey)
+        PrayerNotificationManager.scheduleSinglePrayerReminder(context, prayerKey) // إعادة الجدولة لليوم التالي
     }
 }
 
