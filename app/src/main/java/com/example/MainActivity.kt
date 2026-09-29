@@ -333,7 +333,7 @@ fun MainAppContent(
                 }
             }
 
-            // Date Navigator (Glass)
+            // Date Navigator
             item {
                 GlassCard {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -348,7 +348,7 @@ fun MainAppContent(
                 }
             }
 
-            // Tracker Card (Glass)
+            // Tracker Card
             item {
                 GlassCard {
                     Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
@@ -379,7 +379,7 @@ fun MainAppContent(
                 }
             }
 
-            // Prayers List (Glass rows)
+            // Prayers List
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(text = if (isArabic) "الصلوات المفروضة" else "Obligatory Prayers", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(horizontal = 4.dp))
@@ -392,12 +392,12 @@ fun MainAppContent(
                     PrayerItemRow(if (isArabic) "العشاء" else "Isha", activeRecord.ishaDone, getPrayerTimeStr("isha")) { if (isTodaySelected) viewModel.togglePrayer("isha") }
                 }
             }
-            // Quran & Worship (Glass rows)
+
+            // Quran & Worship
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(text = if (isArabic) "العبادات اليومية" else "Daily Worship", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(horizontal = 4.dp, top = 16.dp))
                     
-                    // Quran
                     GlassCard {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Column {
@@ -412,7 +412,6 @@ fun MainAppContent(
                         }
                     }
 
-                    // Dhikr
                     GlassCard(onClick = { activeDhikrTypeForReading = "morning" }) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Column {
@@ -433,7 +432,6 @@ fun MainAppContent(
                         }
                     }
 
-                    // Tasbeeh
                     GlassCard {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
@@ -448,7 +446,7 @@ fun MainAppContent(
                 }
             }
 
-            // Hisn Al-Muslim (Glass Grid)
+            // Hisn Al-Muslim
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(text = if (isArabic) "حصن المسلم" else "Hisn Al-Muslim", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(horizontal = 4.dp, top = 16.dp))
@@ -471,9 +469,13 @@ fun MainAppContent(
             item { Spacer(modifier = Modifier.height(20.dp)) }
         }
     }
+    if (showStatsDialog) {
+        StatsScreen(isArabic = isArabic, onDismiss = { showStatsDialog = false })
+    }
 
-    if (showStatsDialog) { StatsScreen(isArabic = isArabic, onDismiss = { showStatsDialog = false }) }
-    if (activeHisnCategory != null) { HisnAlMuslimDialog(category = activeHisnCategory!!, isArabic = isArabic, onDismiss = { activeHisnCategory = null }) }
+    if (activeHisnCategory != null) {
+        HisnAlMuslimDialog(category = activeHisnCategory!!, isArabic = isArabic, onDismiss = { activeHisnCategory = null })
+    }
 
     if (showSettingsDialog) {
         AlertDialog(
@@ -485,7 +487,7 @@ fun MainAppContent(
                         Switch(checked = !isArabic, onCheckedChange = { onToggleLanguage() }, modifier = Modifier.scale(0.85f))
                         Text(text = if (isArabic) "English Language" else "اللغة العربية")
                     }
-                    HorizontalDivider()
+                    HorizontalDivider(color = GlassPanelBorder)
                     Row(modifier = Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Switch(checked = hasNotifyPermission && notifyAll, onCheckedChange = { checked -> if (!hasNotifyPermission) launcher.launch(Manifest.permission.POST_NOTIFICATIONS) else { notifyAll = checked; notificationSettingsPrefs.edit().putBoolean("notify_all", checked).apply(); if (checked) com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) } }, modifier = Modifier.scale(0.85f))
                         Text(text = if (isArabic) "تفعيل الإشعارات" else "Enable Notifications", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
@@ -493,7 +495,7 @@ fun MainAppContent(
                     if (hasNotifyPermission && notifyAll) {
                         Button(onClick = { showNotificationDetailsDialog = true }, modifier = Modifier.fillMaxWidth()) { Text(text = if (isArabic) "تخصيص أوقات التنبيهات" else "Customize Alert Times") }
                     }
-                    HorizontalDivider()
+                    HorizontalDivider(color = GlassPanelBorder)
                     Text(text = if (isArabic) "الموقع الجغرافي" else "Location", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), modifier = Modifier.fillMaxWidth())
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { locationLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION) }, modifier = Modifier.weight(1f)) { Text(text = if (isArabic) "تلقائي" else "Auto GPS") }
@@ -504,6 +506,33 @@ fun MainAppContent(
                         Text(text = if (isArabic) "إزاحة المواقيت:" else "Time Offset:", style = MaterialTheme.typography.labelSmall)
                     }
                     Slider(value = offsetMinutesVal.toFloat(), onValueChange = { newValue -> offsetMinutesVal = newValue.toInt(); notificationSettingsPrefs.edit().putInt("prayer_offset_minutes", newValue.toInt()).apply() }, onValueChangeFinished = { com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, valueRange = 0f..30f, steps = 6, modifier = Modifier.height(28.dp))
+                    
+                    // حقوق المطور 
+                    HorizontalDivider(color = GlassPanelBorder)
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = if (isArabic) "إِبْكَـار - صُنع بكل حب بواسطة مصطفى الماظ" else "Ibkar - Made with love by Mostafa Almaz",
+                            style = MaterialTheme.typography.labelSmall.copy(color = GlassAccentLight, fontWeight = FontWeight.Bold)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Button(
+                                onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ibkar.vercel.app"))) } catch (e: Exception) {} },
+                                colors = ButtonDefaults.buttonColors(containerColor = GlassAccent.copy(alpha = 0.2f))
+                            ) {
+                                Text(if (isArabic) "الموقع الرسمي" else "Website", color = GlassAccent, fontWeight = FontWeight.Bold)
+                            }
+                            Button(
+                                onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.facebook.com/ibkar.application"))) } catch (e: Exception) {} },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2).copy(alpha = 0.2f))
+                            ) {
+                                Text("Facebook", color = Color(0xFF8A93FC), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = { Button(onClick = { showSettingsDialog = false }) { Text(if (isArabic) "تم" else "Done") } }
@@ -515,6 +544,7 @@ fun MainAppContent(
         val mMin = notificationSettingsPrefs.getInt("morning_dhikr_minute", 0)
         val eHour = notificationSettingsPrefs.getInt("evening_dhikr_hour", 17)
         val eMin = notificationSettingsPrefs.getInt("evening_dhikr_minute", 0)
+        
         var currentMHour by remember { mutableStateOf(mHour) }
         var currentMMin by remember { mutableStateOf(mMin) }
         var currentEHour by remember { mutableStateOf(eHour) }
