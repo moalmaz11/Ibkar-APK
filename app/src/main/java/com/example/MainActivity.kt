@@ -50,6 +50,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -66,7 +67,6 @@ import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.SuccessGreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import kotlin.random.Random
@@ -236,6 +236,13 @@ fun MainAppContent(
 
     var upcomingPrayerInfoState by remember(todayTimes) { mutableStateOf<UpcomingPrayerInfo?>(null) }
 
+    fun getPrayerTimeStr(key: String): String {
+        val t = todayTimes[key] ?: return ""
+        val h12 = if (t.first % 12 == 0) 12 else t.first % 12
+        val amPm = if (t.first >= 12) { if (isArabic) "م" else "PM" } else { if (isArabic) "ص" else "AM" }
+        return "%d:%02d %s".format(h12, t.second, amPm)
+    }
+
     LaunchedEffect(todayTimes, userLat, userLng, isTodaySelected, isArabic) {
         if (isTodaySelected) {
             while (true) {
@@ -263,12 +270,20 @@ fun MainAppContent(
         if (initialDhikrType != null) { activeDhikrTypeForReading = initialDhikrType; onInitialDhikrHandled() }
     }
 
+    var hasNotifyPermission by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            } else true
+        )
+    }
+
     val launcher = rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) { isGranted ->
+        hasNotifyPermission = isGranted
         if (isGranted) com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context)
     }
 
     LaunchedEffect(Unit) {
-        // طلب السماح للتطبيق بالعمل في الخلفية بحرية (تخطي قيود البطارية)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
             if (!powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
@@ -277,9 +292,7 @@ fun MainAppContent(
                         data = Uri.parse("package:${context.packageName}")
                     }
                     context.startActivity(intent)
-                } catch (e: Exception) {
-                    // تجاهل الخطأ إذا كان هاتف المستخدم لا يدعم هذه النافذة
-                }
+                } catch (e: Exception) { }
             }
         }
 
@@ -298,7 +311,7 @@ fun MainAppContent(
         }
         delay(1200L)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            if (!hasNotifyPermission) {
                 launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
                 com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context)
@@ -432,12 +445,11 @@ fun MainAppContent(
                     Text(text = if (isArabic) "الصلوات الخمس المفروضة" else "The Five Obligatory Prayers", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary), modifier = Modifier.padding(horizontal = 4.dp))
                     if (isTodaySelected) upcomingPrayerInfoState?.let { NextPrayerCountdownCard(upcoming = it, darkTheme = darkTheme, isArabic = isArabic) }
 
-                    fun getT(k:String) = getPrayerTimeStr(k)
-                    PrayerItemRow(if (isArabic) "الفجر" else "Fajr", if (isArabic) "ركعتان مفروضتان" else "2 Fard Rak'ahs", activeRecord.fajrDone, "fajr", isArabic, darkTheme, getT("fajr")) { if (isTodaySelected) viewModel.togglePrayer("fajr") }
-                    PrayerItemRow(if (isArabic) "الظهر" else "Dhuhr", if (isArabic) "أربع ركعات مفروضة" else "4 Fard Rak'ahs", activeRecord.dhuhrDone, "dhuhr", isArabic, darkTheme, getT("dhuhr")) { if (isTodaySelected) viewModel.togglePrayer("dhuhr") }
-                    PrayerItemRow(if (isArabic) "العصر" else "Asr", if (isArabic) "أربع ركعات مفروضة" else "4 Fard Rak'ahs", activeRecord.asrDone, "asr", isArabic, darkTheme, getT("asr")) { if (isTodaySelected) viewModel.togglePrayer("asr") }
-                    PrayerItemRow(if (isArabic) "المغرب" else "Maghrib", if (isArabic) "ثلاث ركعات مفروضة" else "3 Fard Rak'ahs", activeRecord.maghribDone, "maghrib", isArabic, darkTheme, getT("maghrib")) { if (isTodaySelected) viewModel.togglePrayer("maghrib") }
-                    PrayerItemRow(if (isArabic) "العشاء" else "Isha", if (isArabic) "أربع ركعات مفروضة" else "4 Fard Rak'ahs", activeRecord.ishaDone, "isha", isArabic, darkTheme, getT("isha")) { if (isTodaySelected) viewModel.togglePrayer("isha") }
+                    PrayerItemRow(if (isArabic) "الفجر" else "Fajr", if (isArabic) "ركعتان مفروضتان" else "2 Fard Rak'ahs", activeRecord.fajrDone, "fajr", isArabic, darkTheme, getPrayerTimeStr("fajr")) { if (isTodaySelected) viewModel.togglePrayer("fajr") }
+                    PrayerItemRow(if (isArabic) "الظهر" else "Dhuhr", if (isArabic) "أربع ركعات مفروضة" else "4 Fard Rak'ahs", activeRecord.dhuhrDone, "dhuhr", isArabic, darkTheme, getPrayerTimeStr("dhuhr")) { if (isTodaySelected) viewModel.togglePrayer("dhuhr") }
+                    PrayerItemRow(if (isArabic) "العصر" else "Asr", if (isArabic) "أربع ركعات مفروضة" else "4 Fard Rak'ahs", activeRecord.asrDone, "asr", isArabic, darkTheme, getPrayerTimeStr("asr")) { if (isTodaySelected) viewModel.togglePrayer("asr") }
+                    PrayerItemRow(if (isArabic) "المغرب" else "Maghrib", if (isArabic) "ثلاث ركعات مفروضة" else "3 Fard Rak'ahs", activeRecord.maghribDone, "maghrib", isArabic, darkTheme, getPrayerTimeStr("maghrib")) { if (isTodaySelected) viewModel.togglePrayer("maghrib") }
+                    PrayerItemRow(if (isArabic) "العشاء" else "Isha", if (isArabic) "أربع ركعات مفروضة" else "4 Fard Rak'ahs", activeRecord.ishaDone, "isha", isArabic, darkTheme, getPrayerTimeStr("isha")) { if (isTodaySelected) viewModel.togglePrayer("isha") }
 
                     AnimatedVisibility(visible = prayersDoneCount == 5) {
                         Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)).padding(10.dp)) {
@@ -747,167 +759,378 @@ fun MainAppContent(
     }
 }
 
+// ==========================================
+// 3. الدوال والمكونات المساعدة الإضافية
+// ==========================================
+
 @Composable
-fun WorshipCelebrationDialog(title: String, description: String, darkTheme: Boolean, isArabic: Boolean, onDismiss: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        CelebrationEffect()
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(text = title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = if (darkTheme) Color.White else Color(0xFF0F172A)), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-            text = { Text(text = description, style = MaterialTheme.typography.bodyMedium.copy(color = if (darkTheme) Color.LightGray else Color(0xFF475569)), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-            confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen), modifier = Modifier.fillMaxWidth()) { Text(if (isArabic) "متابعة" else "Continue", color = Color.White, fontWeight = FontWeight.Bold) } },
-            containerColor = if (darkTheme) Color(0xFF1E293B) else Color.White
+fun CrescentMoonIcon(modifier: Modifier = Modifier, color: Color) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val path = Path().apply {
+            moveTo(w * 0.75f, h * 0.15f)
+            quadraticTo(w * 0.05f, h * 0.5f, w * 0.75f, h * 0.85f)
+            quadraticTo(w * 0.35f, h * 0.5f, w * 0.75f, h * 0.15f)
+            close()
+        }
+        drawPath(path = path, color = color)
+    }
+}
+
+data class UpcomingPrayerInfo(val tag: String, val name: String, val timeStr: String, val diffMinutes: Int, val diffSeconds: Int)
+
+fun getUpcomingPrayer(todayTimes: Map<String, Pair<Int, Int>>, latitude: Double, longitude: Double, isArabic: Boolean): UpcomingPrayerInfo? {
+    val now = com.example.notification.PrayerTimeCalculator.getLocalCalendar(latitude, longitude)
+    val currentMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+    val currentSeconds = now.get(Calendar.SECOND)
+    val currentSecsFromMidnight = currentMinutes * 60 + currentSeconds
+
+    val prayerList = if (isArabic) listOf("fajr" to "الفجر", "dhuhr" to "الظهر", "asr" to "العصر", "maghrib" to "المغرب", "isha" to "العشاء")
+    else listOf("fajr" to "Fajr", "dhuhr" to "Dhuhr", "asr" to "Asr", "maghrib" to "Maghrib", "isha" to "Isha")
+
+    for (p in prayerList) {
+        val t = todayTimes[p.first]
+        if (t != null) {
+            val pMinutes = t.first * 60 + t.second
+            val prayerSecsFromMidnight = pMinutes * 60
+            if (prayerSecsFromMidnight > currentSecsFromMidnight) {
+                val remainingSeconds = prayerSecsFromMidnight - currentSecsFromMidnight
+                val diffMin = (remainingSeconds / 60).toInt()
+                val diffSec = (remainingSeconds % 60).toInt()
+                val h12 = if (t.first % 12 == 0) 12 else t.first % 12
+                val amPm = if (t.first >= 12) { if (isArabic) "م" else "PM" } else { if (isArabic) "ص" else "AM" }
+                return UpcomingPrayerInfo(p.first, p.second, "%d:%02d %s".format(h12, t.second, amPm), diffMin, diffSec)
+            }
+        }
+    }
+
+    val t = todayTimes["fajr"]
+    if (t != null) {
+        val pMinutes = t.first * 60 + t.second
+        val prayerSecsFromMidnight = (pMinutes + 24 * 60) * 60
+        val remainingSeconds = prayerSecsFromMidnight - currentSecsFromMidnight
+        val diffMin = (remainingSeconds / 60).toInt()
+        val diffSec = (remainingSeconds % 60).toInt()
+        val h12 = if (t.first % 12 == 0) 12 else t.first % 12
+        val amPm = if (isArabic) "ص" else "AM"
+        return UpcomingPrayerInfo("fajr", if (isArabic) "فجر الغد" else "Tomorrow's Fajr", "%d:%02d %s".format(h12, t.second, amPm), diffMin, diffSec)
+    }
+    return null
+}
+
+fun getPrayerSkyGradient(tag: String, isDark: Boolean): List<Color> {
+    return if (isDark) {
+        when (tag) {
+            "fajr" -> listOf(Color(0xFF0F1E36), Color(0xFF1D3557))
+            "dhuhr" -> listOf(Color(0xFF4D342F), Color(0xFF3E2723))
+            "asr" -> listOf(Color(0xFF37474F), Color(0xFF263238))
+            "maghrib" -> listOf(Color(0xFF4A148C), Color(0xFF311B92))
+            "isha" -> listOf(Color(0xFF0D1B2A), Color(0xFF1B263B))
+            else -> listOf(Color(0xFF1E293B), Color(0xFF0F172A))
+        }
+    } else {
+        when (tag) {
+            "fajr" -> listOf(Color(0xFFF3ECE0), Color(0xFFFFCC80))
+            "dhuhr" -> listOf(Color(0xFFE8F5E9), Color(0xFFA5D6A7))
+            "asr" -> listOf(Color(0xFFFFF3E0), Color(0xFFFFE0B2))
+            "maghrib" -> listOf(Color(0xFFFFF0F5), Color(0xFFFFB6C1))
+            "isha" -> listOf(Color(0xFFE8EAF6), Color(0xFFC5CAE9))
+            else -> listOf(Color(0xFFF4F6FA), Color(0xFFEBF1FA))
+        }
+    }
+}
+
+@Composable
+fun NextPrayerCountdownCard(upcoming: UpcomingPrayerInfo, darkTheme: Boolean, isArabic: Boolean) {
+    val isDark = darkTheme
+    val skyGradient = getPrayerSkyGradient(upcoming.tag, isDark)
+    val h = upcoming.diffMinutes / 60
+    val m = upcoming.diffMinutes % 60
+    val s = upcoming.diffSeconds
+    val countdownFormatted = if (h > 0) "%02d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
+    val countdownLabel = if (h > 0) { if (isArabic) "ساعة ودقيقة وثانية" else "Hr : Min : Sec" } else { if (isArabic) "دقيقة وثانية" else "Min : Sec" }
+
+    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.Transparent)) {
+        Box(modifier = Modifier.fillMaxWidth().background(brush = Brush.linearGradient(colors = skyGradient)).padding(14.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Column(horizontalAlignment = Alignment.Start, verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text(text = if (isArabic) "الوقت المتبقي للأذان:" else "Time until Adhan:", style = MaterialTheme.typography.labelSmall.copy(color = (if (isDark) Color.White else Color.Black).copy(alpha = 0.7f), fontWeight = FontWeight.Bold))
+                    Text(text = countdownFormatted, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 24.sp, color = if (isDark) Color(0xFFFFD54F) else Color(0xFF065F46)))
+                    Text(text = countdownLabel, style = MaterialTheme.typography.labelSmall.copy(color = (if (isDark) Color.White else Color.Black).copy(alpha = 0.45f), fontSize = 9.sp))
+                }
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(text = if (isArabic) "الصلاة القادمة" else "Next Prayer", style = MaterialTheme.typography.labelSmall.copy(color = (if (isDark) Color.White else Color.Black).copy(alpha = 0.7f), fontWeight = FontWeight.Bold))
+                    Text(text = upcoming.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, color = if (isDark) Color.White else Color(0xFF111318)))
+                    Box(modifier = Modifier.clip(RoundedCornerShape(50.dp)).background((if (isDark) Color.White else Color.Black).copy(alpha = 0.12f)).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                        Text(text = if (isArabic) "الأذان: ${upcoming.timeStr}" else "Adhan: ${upcoming.timeStr}", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = if (isDark) Color.White else Color.Black))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PrayerCustomIcon(tag: String, isDone: Boolean, modifier: Modifier = Modifier) {
+    val emoji = when (tag) { "fajr" -> "🌅"; "dhuhr" -> "☀️"; "asr" -> "🌤️"; "maghrib" -> "🌇"; "isha" -> "🌙"; else -> "🕌" }
+    Box(modifier = modifier.fillMaxSize().background(Color.White.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) { Text(text = emoji, fontSize = 20.sp) }
+}
+
+@Composable
+fun PrayerItemRow(name: String, description: String, isDone: Boolean, tag: String, isArabic: Boolean, darkTheme: Boolean, timeText: String? = null, onToggle: () -> Unit) {
+    val isDark = darkTheme
+    val skyGradient = remember(tag, isDark) { getPrayerSkyGradient(tag, isDark) }
+    val bgBrush = remember(skyGradient, isDone, isDark) { Brush.horizontalGradient(colors = if (isDone) { if (isDark) listOf(Color(0xFF064E3B), Color(0xFF022C22)) else listOf(Color(0xFFD1FAE5), Color(0xFFA7F3D0)) } else { if (isDark) listOf(skyGradient[0].copy(alpha = 0.18f), skyGradient[1].copy(alpha = 0.08f)) else listOf(skyGradient[0].copy(alpha = 0.65f), skyGradient[1].copy(alpha = 0.35f)) }) }
+    val borderStrokeColor by animateColorAsState(targetValue = if (isDone) Color(0xFF10B981).copy(alpha = 0.6f) else { if (isDark) Color(0xFF1E293B) else Color(0xFFECEFF1) }, animationSpec = spring(), label = "")
+    val rightAccentBarColor = if (isDone) SuccessGreen else { if (isDark) Color(0xFF10B981) else Color(0xFFCFD8DC) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().testTag("prayer_card_$tag").clip(RoundedCornerShape(14.dp)).border(1.dp, borderStrokeColor, RoundedCornerShape(14.dp)).clickable { onToggle() },
+        shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = Color.Transparent), elevation = CardDefaults.cardElevation(defaultElevation = if (isDone) 1.dp else 0.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxWidth().background(if (isDark) Color.Transparent else Color.White).background(brush = bgBrush)) {
+            Box(modifier = Modifier.width(4.dp).height(54.dp).align(Alignment.CenterStart).clip(RoundedCornerShape(topStart = 14.dp, bottomStart = 14.dp, topEnd = 0.dp, bottomEnd = 0.dp)).background(rightAccentBarColor))
+            Row(modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(modifier = Modifier.size(24.dp).clip(CircleShape).background(if (isDone) SuccessGreen else Color.Transparent).border(width = 2.dp, color = if (isDone) SuccessGreen else (if (isDark) Color(0xFF5A6270) else Color(0xFFB0BEC5)), shape = CircleShape), contentAlignment = Alignment.Center) {
+                    if (isDone) Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(text = name, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = if (isDone) { if (isDark) Color(0xFFD1FAE5) else Color(0xFF065F46) } else MaterialTheme.colorScheme.onSurface))
+                            if (isDone) Box(modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(if (isDark) Color(0xFF065F46).copy(alpha = 0.3f) else Color(0xFFD1FAE5)).padding(horizontal = 6.dp, vertical = 1.dp)) { Text(text = if (isArabic) "مؤداة" else "Done", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = if (isDark) Color(0xFF34D399) else Color(0xFF059669), fontSize = 9.sp)) }
+                        }
+                        if (timeText != null) Text(text = timeText, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Black, color = if (isDone) { if (isDark) Color(0xFF34D399) else Color(0xFF059669) } else { if (isDark) Color(0xFFFFD54F) else Color(0xFF065F46) }))
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(text = description, style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f), fontSize = 10.5.sp, lineHeight = 14.sp), maxLines = 1)
+                }
+                Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)).border(width = 1.2.dp, color = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.08f), shape = RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                    PrayerCustomIcon(tag = tag, isDone = isDone, modifier = Modifier.fillMaxSize())
+                }
+            }
+        }
+    }
+}
+
+data class MotivationHeaderData(val title: String, val text: String, val icon: String, val badgeColor: Color)
+
+@Composable
+fun MotivationHeaderCard(totalDoneItems: Int, isQuranDone: Boolean, isFajrDone: Boolean, isTodaySelected: Boolean, darkTheme: Boolean = true, isArabic: Boolean) {
+    val motivation = when {
+        totalDoneItems == 8 -> MotivationHeaderData(if (isArabic) "هنيئاً لك التمام والكمال!" else "Congratulations on Perfection!", if (isArabic) "أتممت عباداتك اليومية كاملة، جعلك الله من أهل الفردوس الأعلى." else "You have completed all daily worships. May Allah grant you Paradise.", "👑", Color(0xFFFFD700))
+        totalDoneItems >= 5 -> MotivationHeaderData(if (isArabic) "همة عالية وخطى ثابتة" else "High Resolve & Steady Steps", if (isArabic) "أنجزت معظم فرائض وسنن اليوم، واصل حتى تختم يومك بتمام الأجر." else "You have accomplished most of today's worships. Keep it up!", "🌟", Color(0xFF34D399))
+        !isFajrDone && isTodaySelected -> MotivationHeaderData(if (isArabic) "انطلاقة اليوم تبدأ بالفجر" else "The Day Starts with Fajr", if (isArabic) "ركعتا الفجر خير من الدنيا وما فيها، ابدأ يومك بنور الصلاة وذكر الله." else "The two Rak'ahs of Fajr are better than the world and everything in it.", "🌅", Color(0xFFFFB74D))
+        else -> MotivationHeaderData(if (isArabic) "يوم جديد.. وباب أجر مفتوح" else "A New Day, A New Reward", if (isArabic) "استعن بالله وحافظ على صلواتك في وقتها لتنال بركة يومك وحفظه." else "Seek help from Allah and maintain your prayers to attain blessings.", "🌿", Color(0xFF10B981))
+    }
+    Card(modifier = Modifier.fillMaxWidth().shadow(4.dp, RoundedCornerShape(20.dp)).border(width = 1.dp, color = if (darkTheme) Color(0xFF1E293B) else Color(0xFFE2E8F0), shape = RoundedCornerShape(20.dp)), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = if (darkTheme) Color(0xFF111827) else Color(0xFFFFFFFF))) {
+        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(motivation.badgeColor.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) { Text(text = motivation.icon, fontSize = 24.sp) }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(text = motivation.title, style = MaterialTheme.typography.titleMedium, color = if (darkTheme) Color.White else Color(0xFF0F172A), fontWeight = FontWeight.Bold)
+                Text(text = motivation.text, style = MaterialTheme.typography.bodySmall, color = if (darkTheme) Color(0xFF94A3B8) else Color(0xFF475569))
+            }
+        }
+    }
+}
+
+data class StepDhikr(val text: String, val count: Int, val benefit: String = "", val translation: String = "")
+
+@Composable
+fun DhikrReadingFlow(type: String, darkTheme: Boolean = true, isArabic: Boolean = true, onDismiss: () -> Unit, onComplete: () -> Unit) {
+    val haptic = LocalHapticFeedback.current
+    val athkarList = if (type == "morning") {
+        listOf(
+            StepDhikr("أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لا إِلَهَ إِلا اللَّهُ وَحْدَهُ لا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذَا الْيَوْمِ وَخَيْرَ مَا بَعْدَهُ، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِي هَذَا الْيَوْمِ وَشَرِّ مَا بَعْدَهُ، رَبِّ أَعُوذُ بِكَ مِنَ الْكَسَلِ وَسُوءِ الْكِبَرِ، رَبِّ أَعُوذُ بِكَ مِنْ عَذَابٍ فِي النَّارِ وَعَذَابٍ فِي الْقَبْرِ.", 1, if (isArabic) "سؤال خير اليوم كله واستعاذة من الشر والكسل وعذاب القبر" else "Asking for the goodness of the day", "We have reached the morning and at this very time unto Allah belongs all sovereignty and praise. None has the right to be worshipped except Allah alone..."),
+            StepDhikr("اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ، خَلَقْتَنـي وَأَنا عَبْـدُك، وَأَنا عَلـى عَهْـدِكَ وَوَعْـدِكَ ما اسْتَـطَعْت، أَعـوذُ بِكَ مِنْ شَـرِّ ما صَنَـعْت، أَبـوءُ لَـكَ بِنِعْـمَتِـكَ عَلَـيَّ وَأَبـوءُ بِذَنْـبي فَاغْفِـرْ لي فَإِنَّـهُ لا يَغْفِـرُ الذُّنـوبَ إِلاّ أَنْتَ.", 1, if (isArabic) "سيد الاستغفار - من قالها موقناً بها ومات من يومه دخل الجنة" else "Sayyid Al-Istighfar - Forgiveness of sins", "O Allah, You are my Lord, none has the right to be worshipped except You, You created me and I am Your servant..."),
+            StepDhikr("اللَّهُمَّ إِنِّي أَصْبَحْتُ أُشْهِدُكَ، وَأُشْهِدُ حَمَلَةَ عَرْشِكَ، وَمَلَائِكَتَكَ، وَجَمِيعَ خَلْقِكَ، أَنَّكَ أَنْتَ اللَّهُ لَا إِلَهَ إِلَّا أَنْتَ وَحْدَكَ لَا شَرِيكَ لَكَ، وَأَنَّ مُحَمَّداً عَبْدُكَ وَرَسُولُكَ.", 4, if (isArabic) "من قالها أربع مرات حين يصبح أو يمسي أعتقه الله من النار" else "Freedom from Hellfire", "O Allah, I have entered a new morning and call upon You, the bearers of Your Throne, Your angels and all creation to bear witness that You are Allah..."),
+            StepDhikr("اللَّهُمَّ مَا أَصْبَحَ بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وَحْدَكَ لَا شَرِيكَ لَكَ، فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ.", 1, if (isArabic) "من قالها حين يصبح فقد أدى شكر يومه" else "Fulfilling the day's gratitude", "O Allah, whatever blessing has been received by me or anyone of Your creation, it is from You alone, without partner..."),
+            StepDhikr("اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لَا إِلَهَ إِلَّا أَنْتَ. اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْكُفْرِ وَالْفَقْرِ، وَأَعُوذُ بِكَ مِنْ عَذَابِ الْقَبْرِ، لَا إِلَهَ إِلَّا أَنْتَ.", 3, if (isArabic) "سؤال العافية وحفظ الحواس والسلامة من الفقر وعذاب القبر" else "Asking for health and protection", "O Allah, grant health to my body; O Allah, grant health to my hearing; O Allah, grant health to my sight. There is no deity except You..."),
+            StepDhikr("حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ.", 7, if (isArabic) "من قالها سبع مرات كفاه الله ما أهمه من أمر الدنيا والآخرة" else "Protection from worries", "Allah is sufficient for me. There is none worthy of worship but Him. I have placed my trust in Him, He is Lord of the Mighty Throne."),
+            StepDhikr("اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي، اللَّهُمَّ اسْتُرْ عَوْرَاتِي وَآمِنْ رَوْعَاتِي، اللَّهُمَّ احْفَظْنِي مِنْ بَيْنِ يَدَيَّ وَمِنْ خَلْفِي وَعَنْ يَمِينِي وَعَنْ شِمَالِي وَمِنْ فَوْقِي، وَأَعُوذُ بِعَظَمَتِكَ أَنْ أُغْتَالَ مِنْ تَحْتِي.", 1, if (isArabic) "دعاء الحفظ الإلهي الشامل من جميع الجهات الست" else "Comprehensive divine protection", "O Allah, I ask You for pardon and well-being in this life and the next. O Allah, safeguard me from before me and behind me, on my right and on my left..."),
+            StepDhikr("اللَّهُمَّ عَالِمَ الْغَيْبِ وَالشَّهَادَةِ، فَاطِرَ السَّمَاوَاتِ وَالْأَرْضِ، رَبَّ كُلِّ شَيْءٍ وَمَلِيكَهُ، أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا أَنْتَ، أَعُوذُ بِكَ مِنْ شَرِّ نَفْسِي وَمِنْ شَرِّ الشَّيْطَانِ وَشِرْكِهِ، وَأَنْ أَقْتَرِفَ عَلَى نَفْسِي سُوءاً أَوْ أَجُرَّهُ إِلَى مُسْلِمٍ.", 1, if (isArabic) "التحصين من كيد الشيطان وشرور النفس والإضرار بالآخرين" else "Protection from Shaytan and evil of the soul", "O Allah, Knower of the unseen and the visible, Creator of the heavens and the earth, Lord and Sovereign of all things..."),
+            StepDhikr("بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.", 3, if (isArabic) "من قالها ثلاثاً لم يضره شيء قط" else "Protection from sudden afflictions", "In the Name of Allah, with Whose Name nothing can cause harm in the earth nor in the heavens, and He is the All-Hearing, the All-Knowing."),
+            StepDhikr("رَضِيتُ بِاللَّهِ رَبّاً، وَبِالْإِسْلَامِ دِيناً، وَبِمُحَمَّدٍ صلى الله عليه وسلم نَبِيّاً.", 3, if (isArabic) "كان حقاً على الله أن يرضيه يوم القيامة" else "Allah's pleasure on the Day of Judgement", "I am pleased with Allah as my Lord, with Islam as my religion, and with Muhammad (peace and blessings be upon him) as my Prophet."),
+            StepDhikr("يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ، أَصْلِحْ لِي شَأْنِي كُلَّهُ، وَلَا تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ.", 1, if (isArabic) "التبرؤ من الحول والقوة وطلب العون والتوفيق الإلهي" else "Seeking Allah's help and reliance", "O Ever Living One, O Self-Existing and Supporter of all, by Your mercy I seek assistance; rectify all my affairs and do not leave me to myself even for a blink of an eye."),
+            StepDhikr("أَصْبَحْنَا عَلَى فِطْرَةِ الْإِسْلَامِ، وَعَلَى كَلِمَةِ الْإِخْلَاصِ، وَعَلَى دِينِ نَبِيِّنَا مُحَمَّدٍ صلى الله عليه وسلم، وَعَلَى مِلَّةِ أَبِينَا إِبْرَاهِيمَ حَنِيفاً مُسْلِماً وَمَا كَانَ مِنَ الْمُشْرِكِينَ.", 1, if (isArabic) "تجديد العهد على التوحيد الخالص وسنة النبي صلى الله عليه وسلم" else "Renewal of pure monotheism", "We enter this morning upon the fitrah of Islam, upon the word of sincere faith, upon the religion of our Prophet Muhammad..."),
+            StepDhikr("سُبْحَانَ اللَّهِ وَبِحَمْدِهِ: عَدَدَ خَلْقِهِ، وَرِضَا نَفْسِهِ، وَزِنَةَ عَرْشِهِ، وَمِدَادَ كَلِمَاتِهِ.", 3, if (isArabic) "تعدل في الأجر ساعات طويلة من الذكر والتسبيح" else "Immense continuous reward", "Glory is to Allah and praise is to Him, by the number of His creation, according to His pleasure, by the weight of His Throne, and the ink of His words."),
+            StepDhikr("قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ.", 3, if (isArabic) "سورة الإخلاص - تعدل ثلث القرآن وتكفي من كل شيء" else "Surah Al-Ikhlas - Equals one-third of the Quran", "Say, 'He is Allah, [who is] One, Allah, the Eternal Refuge...'"),
+            StepDhikr("قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، مِن شَرِّ مَا خَلَقَ، وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ، وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ.", 3, if (isArabic) "سورة الفلق - وقاية تامة من الحسد والسحر وشرور الليل" else "Surah Al-Falaq - Protection from evil", "Say, 'I seek refuge in the Lord of daybreak, from the evil of that which He created...'"),
+            StepDhikr("قُلْ أَعُوذُ بِرَبِّ النَّاسِ، مَلِكِ النَّاسِ، إِلَهِ النَّاسِ، مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ، الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ، مِنَ الْجِنَّةِ وَالنَّاسِ.", 3, if (isArabic) "سورة الناس - الحفظ والاعتصام من وسوسة شياطين الإنس والجن" else "Surah An-Nas - Protection from whispers of Shaytan", "Say, 'I seek refuge in the Lord of mankind, the Sovereign of mankind, the God of mankind...'"),
+            StepDhikr("لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.", 10, if (isArabic) "كانت له عدل أربع رقاب من ولد إسماعيل وكُتب له بها أجر عظيم" else "Reward of freeing slaves", "None has the right to be worshipped except Allah alone, without partner. To Him belongs all sovereignty and praise..."),
+            StepDhikr("سُبْحَانَ اللَّهِ وَبِحَمْدِهِ.", 100, if (isArabic) "حُطّت خطاياه وإن كانت مثل زبد البحر، ولم يأتِ أحد بأفضل مما جاء به" else "Sins forgiven even if like the foam of the sea", "Glory is to Allah and praise is to Him."),
+            StepDhikr("أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ.", 100, if (isArabic) "اتباع لهدي النبي صلى الله عليه وسلم وممحاة للذنوب والخطايا" else "Purification of sins", "I ask Allah for forgiveness and repent to Him.")
+        )
+    } else {
+        listOf(
+            StepDhikr("أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لا إِلَهَ إِلا اللَّهُ وَحْدَهُ لا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، رَبِّ أَسْأَلُكَ خَيْرَ مَا فِي هَذِهِ اللَّيْلَةِ وَخَيْرَ مَا بَعْدَهَا، وَأَعُوذُ بِكَ مِنْ شَرِّ مَا فِي هَذِهِ اللَّيْلَةِ وَشَرِّ مَا بَعْدَهَا، رَبِّ أَعُوذُ بِكَ مِنَ الْكَسَلِ وَسُوءِ الْكِبَرِ، رَبِّ أَعُوذُ بِكَ مِنْ عَذَابٍ فِي النَّارِ وَعَذَابٍ فِي الْقَبْرِ.", 1, if (isArabic) "سؤال خير الليلة والتحصين من الشرور والعذاب" else "Asking for goodness of the night", "We have reached the evening and at this very time unto Allah belongs all sovereignty and praise. None has the right to be worshipped except Allah alone..."),
+            StepDhikr("اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ، خَلَقْتَنـي وَأَنا عَبْـدُك، وَأَنا عَلـى عَهْـدِكَ وَوَعْـدِكَ ما اسْتَـطَعْت، أَعـوذُ بِكَ مِنْ شَـرِّ ما صَنَـعْت، أَبـوءُ لَـكَ بِنِعْـمَتِـكَ عَلَـيَّ وَأَبـوءُ بِذَنْـبي فَاغْفِـرْ لي فَإِنَّـهُ لا يَغْفِـرُ الذُّنـوبَ إِلاّ أَنْتَ.", 1, if (isArabic) "سيد الاستغفار - من مات من ليلته دخل الجنة" else "Sayyid Al-Istighfar - Forgiveness of sins", "O Allah, You are my Lord, none has the right to be worshipped except You, You created me and I am Your servant..."),
+            StepDhikr("اللَّهُمَّ إِنِّي أَمْسَيْتُ أُشْهِدُكَ، وَأُشْهِدُ حَمَلَةَ عَرْشِكَ، وَمَلَائِكَتَكَ، وَجَمِيعَ خَلْقِكَ، أَنَّكَ أَنْتَ اللَّهُ لَا إِلَهَ إِلَّا أَنْتَ وَحْدَكَ لَا شَرِيكَ لَكَ، وَأَنَّ مُحَمَّداً عَبْدُكَ وَرَسُولُكَ.", 4, if (isArabic) "من قالها أربع مرات حين يمسي أعتقه الله من النار" else "Freedom from Hellfire", "O Allah, I have entered a new evening and call upon You, the bearers of Your Throne, Your angels and all creation to bear witness that You are Allah..."),
+            StepDhikr("اللَّهُمَّ مَا أَمْسَى بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وَحْدَكَ لَا شَرِيكَ لَكَ، فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ.", 1, if (isArabic) "من قالها حين يمسي فقد أدى شكر ليلته" else "Fulfilling the night's gratitude", "O Allah, whatever blessing has been received by me or anyone of Your creation, it is from You alone, without partner..."),
+            StepDhikr("اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لَا إِلَهَ إِلَّا أَنْتَ. اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْكُفْرِ وَالْفَقْرِ، وَأَعُوذُ بِكَ مِنْ عَذَابِ الْقَبْرِ، لَا إِلَهَ إِلَّا أَنْتَ.", 3, if (isArabic) "حفظ العافية والبدن والنجاة من عذاب القبر" else "Asking for health and protection", "O Allah, grant health to my body; O Allah, grant health to my hearing; O Allah, grant health to my sight. There is no deity except You..."),
+            StepDhikr("حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ.", 7, if (isArabic) "كفاية الله للمؤمن من كل ما يقلقه ويهمه" else "Protection from worries", "Allah is sufficient for me. There is none worthy of worship but Him. I have placed my trust in Him, He is Lord of the Mighty Throne."),
+            StepDhikr("اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي، اللَّهُمَّ اسْتُرْ عَوْرَاتِي وَآمِنْ رَوْعَاتِي، اللَّهُمَّ احْفَظْنِي مِنْ بَيْنِ يَدَيَّ وَمِنْ خَلْفِي وَعَنْ يَمِينِي وَعَنْ شِمَالِي وَمِنْ فَوْقِي، وَأَعُوذُ بِعَظَمَتِكَ أَنْ أُغْتَالَ مِنْ تَحْتِي.", 1, if (isArabic) "الحفظ من الفواجع والمهالك طوال الليل" else "Comprehensive divine protection", "O Allah, I ask You for pardon and well-being in this life and the next. O Allah, safeguard me from before me and behind me, on my right and on my left..."),
+            StepDhikr("اللَّهُمَّ عَالِمَ الْغَيْبِ وَالشَّهَادَةِ، فَاطِرَ السَّمَاوَاتِ وَالْأَرْضِ، رَبَّ كُلِّ شَيْءٍ وَمَلِيكَهُ، أَشْهَدُ أَنْ لَا إِلَهَ إِلَّا أَنْتَ، أَعُوذُ بِكَ مِنْ شَرِّ نَفْسِي وَمِنْ شَرِّ الشَّيْطَانِ وَشِرْكِهِ، وَأَنْ أَقْتَرِفَ عَلَى نَفْسِي سُوءاً أَوْ أَجُرَّهُ إِلَى مُسْلِمٍ.", 1, if (isArabic) "الحماية من فتن الليل وكيد الشياطين" else "Protection from Shaytan and evil of the soul", "O Allah, Knower of the unseen and the visible, Creator of the heavens and the earth, Lord and Sovereign of all things..."),
+            StepDhikr("بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.", 3, if (isArabic) "حفظ تام من كل سوء ومكروه" else "Protection from sudden afflictions", "In the Name of Allah, with Whose Name nothing can cause harm in the earth nor in the heavens, and He is the All-Hearing, the All-Knowing."),
+            StepDhikr("أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.", 3, if (isArabic) "من قالها لم يضره سم ولا دابة ولا حية في تلك الليلة" else "Protection from harm and evil creatures", "I seek refuge in the Perfect Words of Allah from the evil of what He has created."),
+            StepDhikr("رَضِيتُ بِاللَّهِ رَبّاً، وَبِالْإِسْلَامِ دِيناً، وَبِمُحَمَّدٍ صلى الله عليه وسلم نَبِيّاً.", 3, if (isArabic) "حق على الله أن يرضي قائله" else "Allah's pleasure on the Day of Judgement", "I am pleased with Allah as my Lord, with Islam as my religion, and with Muhammad (peace and blessings be upon him) as my Prophet."),
+            StepDhikr("يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ، أَصْلِحْ لِي شَأْنِي كُلَّهُ، وَلَا تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ.", 1, if (isArabic) "صلاح الأحوال والاستغناء برحمة الله" else "Seeking Allah's help and reliance", "O Ever Living One, O Self-Existing and Supporter of all, by Your mercy I seek assistance; rectify all my affairs and do not leave me to myself even for a blink of an eye."),
+            StepDhikr("أَمْسَيْنَا عَلَى فِطْرَةِ الْإِسْلَامِ، وَعَلَى كَلِمَةِ الْإِخْلَاصِ، وَعَلَى دِينِ نَبِيِّنَا مُحَمَّدٍ صلى الله عليه وسلم، وَعَلَى مِلَّةِ أَبِينَا إِبْرَاهِيمَ حَنِيفاً مُسْلِماً وَمَا كَانَ مِنَ الْمُشْرِكِينَ.", 1, if (isArabic) "المبيت على فطرة التوحيد والإسلام" else "Renewal of pure monotheism", "We enter this evening upon the fitrah of Islam, upon the word of sincere faith, upon the religion of our Prophet Muhammad..."),
+            StepDhikr("قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ.", 3, if (isArabic) "تكفيك من كل سوء" else "Surah Al-Ikhlas - Equals one-third of the Quran", "Say, 'He is Allah, [who is] One, Allah, the Eternal Refuge...'"),
+            StepDhikr("قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، مِن شَرِّ مَا خَلَقَ، وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ، وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ.", 3, if (isArabic) "الحفظ من شر غاسق إذا وقب والحاسدين" else "Surah Al-Falaq - Protection from evil", "Say, 'I seek refuge in the Lord of daybreak, from the evil of that which He created...'"),
+            StepDhikr("قُلْ أَعُوذُ بِرَبِّ النَّاسِ، مَلِكِ النَّاسِ، إِلَهِ النَّاسِ، مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ، الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ، مِنَ الْجِنَّةِ وَالنَّاسِ.", 3, if (isArabic) "الحفظ من كل وسواس خناس" else "Surah An-Nas - Protection from whispers of Shaytan", "Say, 'I seek refuge in the Lord of mankind, the Sovereign of mankind, the God of mankind...'"),
+            StepDhikr("لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ.", 10, if (isArabic) "حرز من الشيطان وحط للأوزار" else "Reward of freeing slaves", "None has the right to be worshipped except Allah alone, without partner. To Him belongs all sovereignty and praise..."),
+            StepDhikr("سُبْحَانَ اللَّهِ وَبِحَمْدِهِ.", 100, if (isArabic) "مغفرة الذنوب ورفعة الدرجات" else "Sins forgiven even if like the foam of the sea", "Glory is to Allah and praise is to Him.")
         )
     }
-}
 
-data class Particle(var x: Float, var y: Float, var speedY: Float, var speedX: Float, val color: Color, val isBalloon: Boolean, val size: Float)
-
-@Composable
-fun CelebrationEffect() {
-    val particles = remember { 
-        List(80) { 
-            val isBalloon = Random.nextFloat() > 0.7f
-            Particle(
-                x = Random.nextFloat() * 1000f, 
-                y = if (isBalloon) 2500f + Random.nextFloat() * 500f else -100f - Random.nextFloat() * 500f, 
-                speedY = if (isBalloon) -(3f + Random.nextFloat() * 4f) else (5f + Random.nextFloat() * 6f), 
-                speedX = (Random.nextFloat() - 0.5f) * 4f, 
-                color = listOf(Color(0xFFEF4444), Color(0xFF3B82F6), Color(0xFF10B981), Color(0xFFF59E0B), Color(0xFF8B5CF6)).random(),
-                isBalloon = isBalloon,
-                size = if (isBalloon) 40f + Random.nextFloat() * 20f else 10f + Random.nextFloat() * 10f
-            )
-        } 
-    }
-    var trigger by remember { mutableStateOf(0f) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            withFrameNanos { trigger += 1f }
-            particles.forEach { 
-                it.y += it.speedY; it.x += it.speedX 
-                if (!it.isBalloon && it.y > 3000f) it.y = -100f
-                if (it.isBalloon && it.y < -500f) it.y = 2500f
-            }
-        }
-    }
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        trigger.let { _ ->
-            particles.forEach { p ->
-                if (p.isBalloon) drawCircle(color = p.color.copy(alpha = 0.8f), radius = p.size, center = Offset(p.x, p.y))
-                else drawRect(color = p.color, topLeft = Offset(p.x, p.y), size = Size(p.size, p.size))
-            }
-        }
-    }
-}
-
-@Composable
-fun StatsScreen(darkTheme: Boolean, isArabic: Boolean, onDismiss: () -> Unit) {
     val context = LocalContext.current
-    var history by remember { mutableStateOf<List<DailyRecord>>(emptyList()) }
-    
-    LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
-            try {
-                val db = WorshipDatabase.getDatabase(context)
-                val cursor = db.openHelper.readableDatabase.query("SELECT * FROM daily_record ORDER BY date ASC")
-                val list = mutableListOf<DailyRecord>()
-                while (cursor.moveToNext()) {
-                    val dateIdx = cursor.getColumnIndex("date")
-                    val fIdx = cursor.getColumnIndex("fajrDone")
-                    val dIdx = cursor.getColumnIndex("dhuhrDone")
-                    val aIdx = cursor.getColumnIndex("asrDone")
-                    val mIdx = cursor.getColumnIndex("maghribDone")
-                    val iIdx = cursor.getColumnIndex("ishaDone")
-                    val qIdx = cursor.getColumnIndex("quranPages")
-                    val mdIdx = cursor.getColumnIndex("morningDhikrDone")
-                    val edIdx = cursor.getColumnIndex("eveningDhikrDone")
-                    val dcIdx = cursor.getColumnIndex("dhikrCount")
-                    if (dateIdx != -1) {
-                        list.add(DailyRecord(
-                            date = cursor.getString(dateIdx), fajrDone = cursor.getInt(fIdx) == 1, dhuhrDone = cursor.getInt(dIdx) == 1,
-                            asrDone = cursor.getInt(aIdx) == 1, maghribDone = cursor.getInt(mIdx) == 1, ishaDone = cursor.getInt(iIdx) == 1,
-                            quranPages = cursor.getInt(qIdx), morningDhikrDone = cursor.getInt(mdIdx) == 1, eveningDhikrDone = cursor.getInt(edIdx) == 1,
-                            dhikrCount = cursor.getInt(dcIdx)
-                        ))
-                    }
-                }
-                cursor.close()
-                history = list
-            } catch (e: Exception) { history = emptyList() }
+    val sharedPrefs = remember(context) { context.getSharedPreferences("dhikr_flow_prefs", Context.MODE_PRIVATE) }
+    val todayDateStr = remember { DateHelper.getTodayDateString(context) }
+    val savedDateKey = "dhikr_${type}_date"
+    val savedIndexKey = "dhikr_${type}_index"
+    val savedCountKey = "dhikr_${type}_count"
+    val lastDate = sharedPrefs.getString(savedDateKey, "")
+    val isNewDay = lastDate != todayDateStr
+
+    if (isNewDay) {
+        sharedPrefs.edit().putString(savedDateKey, todayDateStr).putInt(savedIndexKey, 0).putInt(savedCountKey, athkarList[0].count).apply()
+    }
+
+    var currentIndex by remember { mutableStateOf(if (isNewDay) 0 else sharedPrefs.getInt(savedIndexKey, 0)) }
+    val totalCount = athkarList.size
+
+    val currentCountsLeft = remember(type) {
+        mutableStateListOf<Int>().apply {
+            val savedIndex = if (isNewDay) 0 else sharedPrefs.getInt(savedIndexKey, 0)
+            for (i in 0 until totalCount) {
+                if (i < savedIndex) add(0)
+                else if (i == savedIndex) {
+                    val defaultCount = athkarList[i].count
+                    val savedLeft = if (isNewDay) defaultCount else sharedPrefs.getInt(savedCountKey, defaultCount)
+                    if (savedLeft in 1..defaultCount) add(savedLeft) else add(defaultCount)
+                } else add(athkarList[i].count)
+            }
         }
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (isArabic) "إحصائيات الإنجاز 📊" else "Worship Stats 📊", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                if (history.isEmpty()) {
-                    Text(if (isArabic) "لا توجد بيانات مسجلة بعد." else "No records found.", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-                } else {
-                    val totalScore = history.sumOf { it.calculatePoints() }
-                    val maxScore = history.maxOfOrNull { it.calculatePoints() } ?: 0
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(SuccessGreen.copy(alpha = 0.1f)).padding(8.dp)) {
-                            Text(if (isArabic) "إجمالي النقاط" else "Total Points", style = MaterialTheme.typography.labelSmall)
-                            Text("$totalScore", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black, color = SuccessGreen))
+    fun saveProgress(index: Int, countLeft: Int) {
+        sharedPrefs.edit().putString(savedDateKey, todayDateStr).putInt(savedIndexKey, index).putInt(savedCountKey, countLeft).apply()
+    }
+
+    val currentDhikr = athkarList.getOrNull(currentIndex)
+    val curCountLeft = currentCountsLeft.getOrNull(currentIndex) ?: 0
+    var isFinished by remember { mutableStateOf(currentIndex >= totalCount) }
+
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = { onDismiss() },
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = true, dismissOnClickOutside = false)
+    ) {
+        val backgroundColor = if (darkTheme) Color(0xFF0B0F19) else Color(0xFFF8FAFC)
+        val cardColor = if (darkTheme) Color(0xFF111827) else Color(0xFFFFFFFF)
+        val textColor = if (darkTheme) Color.White else Color(0xFF0F172A)
+        val brandColor = if (type == "morning") Color(0xFF10B981) else Color(0xFF3B82F6)
+
+        CompositionLocalProvider(LocalLayoutDirection provides if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr) {
+            Box(modifier = Modifier.fillMaxSize().background(backgroundColor).windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.TopCenter) {
+                Column(modifier = Modifier.fillMaxHeight().widthIn(max = 660.dp).padding(20.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { onDismiss() }, modifier = Modifier.clip(CircleShape).background(if (darkTheme) Color(0xFF1E293B) else Color(0xFFE2E8F0))) {
+                            Icon(imageVector = Icons.Default.Close, contentDescription = if (isArabic) "إغلاق" else "Close", tint = if (darkTheme) Color.White else Color(0xFF475569))
                         }
-                        Spacer(Modifier.width(8.dp))
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(Color(0xFF3B82F6).copy(alpha = 0.1f)).padding(8.dp)) {
-                            Text(if (isArabic) "الأيام المسجلة" else "Days Tracked", style = MaterialTheme.typography.labelSmall)
-                            Text("${history.size}", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black, color = Color(0xFF3B82F6)))
+                        Text(text = if (type == "morning") { if (isArabic) "أذكار الصباح" else "Morning Dhikr" } else { if (isArabic) "أذكار المساء" else "Evening Dhikr" }, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = brandColor), textAlign = TextAlign.Center)
+                        IconButton(onClick = { currentIndex = 0; isFinished = false; saveProgress(0, athkarList[0].count); currentCountsLeft.clear(); currentCountsLeft.addAll(athkarList.map { it.count }) }, modifier = Modifier.clip(CircleShape).background(if (darkTheme) Color(0xFF1E293B) else Color(0xFFE2E8F0))) {
+                            Icon(imageVector = Icons.Default.Refresh, contentDescription = if (isArabic) "إعادة البدء" else "Restart", tint = if (darkTheme) Color.White else Color(0xFF475569))
                         }
                     }
-                    Text(if (isArabic) "أداء الأيام المسجلة (من 100)" else "Days Performance (Out of 100)", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-                    Canvas(modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(8.dp)).background(if (darkTheme) Color(0xFF1E293B) else Color(0xFFF1F5F9)).padding(16.dp)) {
-                        val barWidth = size.width / (history.size.coerceAtLeast(1) * 2f)
-                        val maxH = size.height
-                        history.forEachIndexed { i, rec ->
-                            val pts = rec.calculatePoints().toFloat()
-                            val h = (pts / 100f) * maxH
-                            val x = i * (barWidth * 2) + barWidth / 2
-                            drawRect(color = if (pts >= 100) SuccessGreen else Color(0xFF3B82F6), topLeft = Offset(x, maxH - h), size = Size(barWidth, h))
+
+                    if (!isFinished && currentDhikr != null) {
+                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(text = if (isArabic) "الذكر ${currentIndex + 1} من $totalCount" else "Dhikr ${currentIndex + 1} of $totalCount", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, color = if (darkTheme) Color.LightGray else Color(0xFF64748B)))
+                                val percent = (((currentIndex + 1).toFloat() / totalCount) * 100).toInt()
+                                Text(text = "$percent%", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = brandColor))
+                            }
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                for (i in 0 until totalCount) {
+                                    val segmentColor = when { i < currentIndex -> SuccessGreen; i == currentIndex -> brandColor; else -> if (darkTheme) Color(0xFF1E293B) else Color(0xFFE2E8F0) }
+                                    Box(modifier = Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(segmentColor))
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Box(modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(cardColor).border(1.dp, if (darkTheme) Color(0xFF1E293B) else Color(0xFFE2E8F0), RoundedCornerShape(24.dp)).padding(24.dp), contentAlignment = Alignment.Center) {
+                            Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween) {
+                                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text(text = currentDhikr.text, style = MaterialTheme.typography.titleLarge.copy(lineHeight = 36.sp, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = textColor), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                                    if (!isArabic && currentDhikr.translation.isNotEmpty()) {
+                                        Text(text = currentDhikr.translation, style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = if (darkTheme) Color(0xFF94A3B8) else Color(0xFF475569)), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                if (currentDhikr.benefit.isNotEmpty()) {
+                                    Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (darkTheme) Color(0xFF1E293B) else Color(0xFFF1F5F9)).padding(horizontal = 16.dp, vertical = 10.dp)) {
+                                        Text(text = if (isArabic) "الفضل: ${currentDhikr.benefit}" else "Benefit: ${currentDhikr.benefit}", style = MaterialTheme.typography.bodySmall.copy(color = if (darkTheme) Color(0xFF94A3B8) else Color(0xFF475569), lineHeight = 16.sp), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Box(
+                                modifier = Modifier.size(115.dp).clip(CircleShape).background(Brush.radialGradient(colors = listOf(brandColor, brandColor.copy(alpha = 0.7f)))).clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    if (curCountLeft > 1) { val newCount = curCountLeft - 1; currentCountsLeft[currentIndex] = newCount; saveProgress(currentIndex, newCount) } 
+                                    else {
+                                        currentCountsLeft[currentIndex] = 0
+                                        if (currentIndex < totalCount - 1) { val nextIndex = currentIndex + 1; currentIndex = nextIndex; saveProgress(nextIndex, athkarList[nextIndex].count) } 
+                                        else { isFinished = true; saveProgress(0, athkarList[0].count) }
+                                    }
+                                },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                    Text(text = "$curCountLeft", fontSize = 40.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                                    Text(text = if (isArabic) "متبقي" else "Left", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.8f))
+                                }
+                            }
+                            Text(text = if (isArabic) "انقر على الدائرة للعد" else "Tap the circle to count", style = MaterialTheme.typography.labelSmall.copy(color = if (darkTheme) Color.Gray else Color(0xFF64748B)))
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { if (currentIndex > 0) { val prevIndex = currentIndex - 1; currentIndex = prevIndex; val prevDefaultCount = athkarList[prevIndex].count; currentCountsLeft[prevIndex] = prevDefaultCount; saveProgress(prevIndex, prevDefaultCount) } }, enabled = currentIndex > 0) {
+                                Text(text = if (isArabic) "السابق" else "Previous", fontWeight = FontWeight.Bold, color = if (currentIndex > 0) brandColor else Color.Gray)
+                            }
+                            TextButton(onClick = {
+                                currentCountsLeft[currentIndex] = 0
+                                if (currentIndex < totalCount - 1) { val nextIndex = currentIndex + 1; currentIndex = nextIndex; saveProgress(nextIndex, athkarList[nextIndex].count) } 
+                                else { isFinished = true; saveProgress(0, athkarList[0].count) }
+                            }) {
+                                Text(text = if (isArabic) "تخطي" else "Skip", fontWeight = FontWeight.Bold, color = brandColor)
+                            }
+                        }
+                    } else {
+                        Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+                                Box(modifier = Modifier.size(100.dp).clip(CircleShape).background(SuccessGreen.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) { Text(text = "✨", fontSize = 32.sp) }
+                                Text(text = if (isArabic) "تقبل الله طاعتك!" else "May Allah accept your deeds!", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold, color = SuccessGreen), textAlign = TextAlign.Center)
+                                Text(text = if (isArabic) "أتممت قراءة ${if (type == "morning") "أذكار الصباح" else "أذكار المساء"} بنجاح، حفظك الله ورعاك." else "You have successfully completed reading the ${if (type == "morning") "Morning Dhikr" else "Evening Dhikr"}.", style = MaterialTheme.typography.bodyMedium.copy(color = if (darkTheme) Color.LightGray else Color(0xFF475569), lineHeight = 22.sp), textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 24.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(onClick = { saveProgress(0, athkarList[0].count); onComplete() }, colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                                    Text(text = if (isArabic) "تم وحفظ الإنجاز" else "Save Achievement", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = Color.White))
+                                }
+                            }
                         }
                     }
                 }
             }
-        },
-        confirmButton = { Button(onClick = onDismiss) { Text(if (isArabic) "إغلاق" else "Close") } },
-        containerColor = if (darkTheme) Color(0xFF0F172A) else Color.White
-    )
-}
-
-@Composable
-fun HisnAlMuslimDialog(category: String, darkTheme: Boolean, isArabic: Boolean, onDismiss: () -> Unit) {
-    val title = when(category) {
-        "sleep" -> if (isArabic) "أذكار النوم" else "Sleep"
-        "wakeup" -> if (isArabic) "أذكار الاستيقاظ" else "Waking up"
-        "food" -> if (isArabic) "الطعام والشراب" else "Food & Drink"
-        "travel" -> if (isArabic) "الركوب والسفر" else "Travel"
-        "home" -> if (isArabic) "المنزل" else "Home"
-        "mosque" -> if (isArabic) "المسجد" else "Mosque"
-        "toilet" -> if (isArabic) "الخلاء" else "Toilet"
-        "rain" -> if (isArabic) "المطر والرياح" else "Rain & Wind"
-        else -> ""
+        }
     }
-    
-    val text = when(category) {
-        "sleep" -> "بِاسْمِكَ رَبِّـي وَضَعْـتُ جَنْـبي، وَبِكَ أَرْفَعُـه، فَإِن أَمْسَـكْتَ نَفْسـي فارْحَـمْها ، وَإِنْ أَرْسَلْتَـها فاحْفَظْـها بِمـا تَحْفَـظُ بِه عِبـادَكَ الصّـالِحـين."
-        "wakeup" -> "الحَمْـدُ لِلّهِ الّذي أَحْـيانا بَعْـدَ ما أَماتَـنا وَإليه النُّـشور."
-        "food" -> "بِسْمِ اللَّهِ. (عند البدء)\n\nالْحَمْدُ لِلَّهِ الَّذِي أَطْعَمَنِي هَذَا وَرَزَقَنِيهِ مِنْ غَيْرِ حَوْلٍ مِنِّي وَلَا قُوَّةٍ. (عند الانتهاء)"
-        "travel" -> "سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ * وَإِنَّا إِلَى رَبِّنَا لَمُنْقَلِبُونَ."
-        "home" -> "بِسْـمِ اللهِ وَلَجْنـا، وَبِسْـمِ اللهِ خَـرَجْنـا، وَعَلـى رَبِّنـا تَوَكّّلْـنا. (الدخول)\n\nبِسْمِ اللَّهِ، تَوَكَّلْتُ عَلَى اللَّهِ، وَلَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ. (الخروج)"
-        "mosque" -> "اللَّهُمَّ افْتَحْ لِي أَبْوَابَ رَحْمَتِكَ. (الدخول)\n\nاللَّهُمَّ إِنِّي أَسْأَلُكَ مِنْ فَضْلِكَ. (الخروج)"
-        "toilet" -> "بِسْمِ الله، اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْخُبْثِ وَالْخَبَائِثِ. (الدخول)\n\nغُفْرَانَكَ. (الخروج)"
-        "rain" -> "اللَّهُمَّ صَيِّباً نَافِعاً. (المطر)\n\nسُبْحَانَ الَّذِي يُسَبِّحُ الرَّعْدُ بِحَمْدِهِ وَالْمَلَائِكَةُ مِنْ خِيفَتِهِ. (الرعد)"
-        else -> ""
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = if (darkTheme) Color(0xFF10B981) else Color(0xFF065F46)), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-        text = { Text(text, style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 32.sp, fontWeight = FontWeight.Bold, color = if (darkTheme) Color.White else Color(0xFF000000)), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = if (darkTheme) Color(0xFF10B981) else Color(0xFF065F46)), modifier = Modifier.fillMaxWidth()) { Text(if (isArabic) "إغلاق" else "Close", color = Color.White, fontWeight = FontWeight.Bold) } },
-        containerColor = if (darkTheme) Color(0xFF1E293B) else Color.White
-    )
 }
