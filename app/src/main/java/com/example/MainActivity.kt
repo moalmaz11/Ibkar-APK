@@ -183,7 +183,6 @@ fun MainAppContent(
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showStatsDialog by remember { mutableStateOf(false) }
     var showManualLocationDialog by remember { mutableStateOf(false) }
-    var showHisnDialog by remember { mutableStateOf(false) }
     var activeDhikrTypeForReading by remember { mutableStateOf<String?>(null) }
     var activeHisnCategory by remember { mutableStateOf<String?>(null) }
     
@@ -211,6 +210,9 @@ fun MainAppContent(
 
     val notificationSettingsPrefs = remember(context) { context.getSharedPreferences("notification_settings", Context.MODE_PRIVATE) }
     var notifyAll by remember { mutableStateOf(notificationSettingsPrefs.getBoolean("notify_all", true)) }
+    var notifyPrayers by remember { mutableStateOf(notificationSettingsPrefs.getBoolean("notify_prayers", true)) }
+    var notifyMorningDhikr by remember { mutableStateOf(notificationSettingsPrefs.getBoolean("notify_morning_dhikr", true)) }
+    var notifyEveningDhikr by remember { mutableStateOf(notificationSettingsPrefs.getBoolean("notify_evening_dhikr", true)) }
     var showNotificationDetailsDialog by remember { mutableStateOf(false) }
 
     var userLat by remember { mutableStateOf(notificationSettingsPrefs.getFloat("user_latitude", 30.0444f)) }
@@ -266,6 +268,21 @@ fun MainAppContent(
     }
 
     LaunchedEffect(Unit) {
+        // طلب السماح للتطبيق بالعمل في الخلفية بحرية (تخطي قيود البطارية)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            if (!powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
+                try {
+                    val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:${context.packageName}")
+                    }
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    // تجاهل الخطأ إذا كان هاتف المستخدم لا يدعم هذه النافذة
+                }
+            }
+        }
+
         val hasCoarseLocation = androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
         if (!hasCoarseLocation) {
             delay(800L); locationLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -280,8 +297,15 @@ fun MainAppContent(
             }
         }
         delay(1200L)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        else com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context)
+            }
+        } else {
+            com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context)
+        }
     }
 
     val activeRecord = record ?: DailyRecord(date = selectedDate)
@@ -882,7 +906,7 @@ fun HisnAlMuslimDialog(category: String, darkTheme: Boolean, isArabic: Boolean, 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = if (darkTheme) Color(0xFF10B981) else Color(0xFF065F46)), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-        text = { Text(text, style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 32.sp, fontWeight = FontWeight.Bold, color = if (darkTheme) Color.White else Color.Black), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+        text = { Text(text, style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 32.sp, fontWeight = FontWeight.Bold, color = if (darkTheme) Color.White else Color(0xFF000000)), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
         confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = if (darkTheme) Color(0xFF10B981) else Color(0xFF065F46)), modifier = Modifier.fillMaxWidth()) { Text(if (isArabic) "إغلاق" else "Close", color = Color.White, fontWeight = FontWeight.Bold) } },
         containerColor = if (darkTheme) Color(0xFF1E293B) else Color.White
     )
