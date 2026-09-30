@@ -39,7 +39,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -51,7 +50,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -380,7 +378,7 @@ fun MainAppContent(
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(text = if (isArabic) "الصلوات المفروضة" else "Obligatory Prayers", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(horizontal = 4.dp))
+                    Text(text = if (isArabic) "الصلوات المفروضة" else "Obligatory Prayers", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(start = 4.dp, end = 4.dp))
                     if (isTodaySelected) upcomingPrayerInfoState?.let { NextPrayerCountdownCard(upcoming = it, isArabic = isArabic) }
 
                     PrayerItemRow(if (isArabic) "الفجر" else "Fajr", activeRecord.fajrDone, getPrayerTimeStr("fajr")) { if (isTodaySelected) viewModel.togglePrayer("fajr") }
@@ -390,10 +388,9 @@ fun MainAppContent(
                     PrayerItemRow(if (isArabic) "العشاء" else "Isha", activeRecord.ishaDone, getPrayerTimeStr("isha")) { if (isTodaySelected) viewModel.togglePrayer("isha") }
                 }
             }
-
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(text = if (isArabic) "العبادات اليومية" else "Daily Worship", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(horizontal = 4.dp, top = 16.dp))
+                    Text(text = if (isArabic) "العبادات اليومية" else "Daily Worship", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 16.dp))
                     
                     GlassCard {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -445,7 +442,7 @@ fun MainAppContent(
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(text = if (isArabic) "حصن المسلم" else "Hisn Al-Muslim", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(horizontal = 4.dp, top = 16.dp))
+                    Text(text = if (isArabic) "حصن المسلم" else "Hisn Al-Muslim", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 16.dp))
                     GlassCard {
                         val hisnCats = listOf("sleep" to (if (isArabic) "النوم" else "Sleep"), "wakeup" to (if (isArabic) "الاستيقاظ" else "Wakeup"), "food" to (if (isArabic) "الطعام" else "Food"), "travel" to (if (isArabic) "السفر" else "Travel"), "home" to (if (isArabic) "المنزل" else "Home"), "mosque" to (if (isArabic) "المسجد" else "Mosque"), "toilet" to (if (isArabic) "الخلاء" else "Toilet"), "rain" to (if (isArabic) "المطر" else "Rain"))
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -539,6 +536,7 @@ fun MainAppContent(
         var currentMMin by remember { mutableStateOf(mMin) }
         var currentEHour by remember { mutableStateOf(eHour) }
         var currentEMin by remember { mutableStateOf(eMin) }
+
         val formatTime = { h: Int, m: Int -> val amPm = if (h >= 12) (if (isArabic) "م" else "PM") else (if (isArabic) "ص" else "AM"); val h12 = if (h % 12 == 0) 12 else h % 12; String.format("%02d:%02d %s", h12, m, amPm) }
 
         AlertDialog(
@@ -784,6 +782,11 @@ fun WorshipCelebrationDialog(title: String, description: String, isArabic: Boole
     }
 }
 
+data class Particle(
+    var x: Float, var y: Float, var speedY: Float, var speedX: Float,
+    val color: Color, val isBalloon: Boolean, val size: Float
+)
+
 @Composable
 fun CelebrationEffect() {
     val particles = remember { 
@@ -809,7 +812,7 @@ fun CelebrationEffect() {
         }
     }
     Canvas(modifier = Modifier.fillMaxSize()) {
-        trigger.let {
+        trigger.let { _ ->
             particles.forEach { p ->
                 if (p.isBalloon) drawCircle(color = p.color.copy(alpha = 0.8f), radius = p.size, center = Offset(p.x, p.y))
                 else drawRect(color = p.color, topLeft = Offset(p.x, p.y), size = Size(p.size, p.size))
