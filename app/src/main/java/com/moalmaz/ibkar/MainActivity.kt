@@ -1,25 +1,20 @@
 package com.moalmaz.ibkar
 
-import android.Manifest
-import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.location.LocationManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,7 +58,7 @@ import java.util.Calendar
 import kotlin.random.Random
 
 // ==========================================
-// 1. قاعدة بيانات الموقع
+// 1. قاعدة بيانات الموقع والأذكار
 // ==========================================
 data class CityLocation(val nameAr: String, val nameEn: String, val lat: Float, val lng: Float)
 val egyptCities = listOf(
@@ -97,9 +92,6 @@ fun updateLocationOffline(context: Context, onResult: (Boolean, String, Float, F
     } catch (e: SecurityException) { onResult(false, "مرفوض", 0f, 0f) }
 }
 
-// ==========================================
-// 2. قاعدة بيانات الأذكار كاملة
-// ==========================================
 data class StepDhikr(val text: String, val count: Int, val benefit: String = "", val translation: String = "")
 
 val morningAdhkarList = listOf(
@@ -140,7 +132,7 @@ val hisnAlMuslimData = mapOf(
 )
 
 // ==========================================
-// 3. الألوان والتصميم (UI)
+// 2. الكود الأساسي (Main Activity)
 // ==========================================
 val GlassBgGradient = listOf(Color(0xFF0F172A), Color(0xFF1E1B4B))
 val GlassAccent = Color(0xFF818CF8)
@@ -355,6 +347,10 @@ fun MainAppNavigation(isArabic: Boolean, onToggleLanguage: () -> Unit, viewModel
     }
 }
 
+// ------------------------------------------------------------------------
+// UI Components
+// ------------------------------------------------------------------------
+
 @Composable
 fun GlassCard(modifier: Modifier = Modifier, padding: PaddingValues = PaddingValues(20.dp), onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     var mod = modifier.clip(RoundedCornerShape(24.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(24.dp))
@@ -401,7 +397,7 @@ fun HomeScreen(
                             Text(text = "/100", style = MaterialTheme.typography.bodyLarge.copy(color = GlassAccentLight, fontWeight = FontWeight.Bold, fontSize = 18.sp), modifier = Modifier.padding(bottom = 6.dp))
                         }
                     }
-                    Icon(Icons.Outlined.CheckCircle, null, tint = GlassSuccess, modifier = Modifier.size(36.dp))
+                    Icon(Icons.Filled.CheckCircle, null, tint = GlassSuccess, modifier = Modifier.size(36.dp))
                 }
                 val dayProgress = totalDoneItems.toFloat() / 8f
                 Box(modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(10.dp)).background(GlassWhite.copy(alpha = 0.1f))) {
@@ -413,19 +409,19 @@ fun HomeScreen(
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(modifier = Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(20.dp)).clickable { onOpenWird() }.padding(12.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Outlined.List, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
+                        Icon(Icons.Filled.List, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
                         Text(if (isArabic) "الورد" else "Wird", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
                     }
                 }
                 Box(modifier = Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(20.dp)).clickable { onOpenTasbeeh() }.padding(12.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Outlined.Add, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
+                        Icon(Icons.Filled.Add, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
                         Text(if (isArabic) "التسبيح" else "Tasbeeh", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
                     }
                 }
                 Box(modifier = Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(20.dp)).clickable { onOpenHisn() }.padding(12.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Outlined.Lock, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
+                        Icon(Icons.Filled.Lock, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
                         Text(if (isArabic) "حصن" else "Hisn", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
                     }
                 }
@@ -436,13 +432,13 @@ fun HomeScreen(
                 GlassCard(modifier = Modifier.weight(1f), padding = PaddingValues(16.dp), onClick = { onOpenDhikr("morning") }) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(text = if (isArabic) "أذكار الصباح" else "Morning", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
-                        if (record.morningDhikrDone) Icon(Icons.Filled.CheckCircle, null, tint = GlassSuccess) else Icon(Icons.Outlined.Done, null, tint = GlassAccentLight)
+                        if (record.morningDhikrDone) Icon(Icons.Filled.CheckCircle, null, tint = GlassSuccess) else Icon(Icons.Filled.Done, null, tint = GlassAccentLight)
                     }
                 }
                 GlassCard(modifier = Modifier.weight(1f), padding = PaddingValues(16.dp), onClick = { onOpenDhikr("evening") }) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(text = if (isArabic) "أذكار المساء" else "Evening", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
-                        if (record.eveningDhikrDone) Icon(Icons.Filled.CheckCircle, null, tint = GlassSuccess) else Icon(Icons.Outlined.Done, null, tint = GlassAccentLight)
+                        if (record.eveningDhikrDone) Icon(Icons.Filled.CheckCircle, null, tint = GlassSuccess) else Icon(Icons.Filled.Done, null, tint = GlassAccentLight)
                     }
                 }
             }
@@ -474,12 +470,12 @@ fun AdvancedStatsScreen(isArabic: Boolean, history: List<DailyRecord>) {
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 GlassCard(modifier = Modifier.weight(1f), padding = PaddingValues(16.dp)) {
-                    Icon(Icons.Outlined.Star, null, tint = Color(0xFFF59E0B), modifier = Modifier.size(32.dp).padding(bottom = 8.dp))
+                    Icon(Icons.Filled.Star, null, tint = Color(0xFFF59E0B), modifier = Modifier.size(32.dp).padding(bottom = 8.dp))
                     Text(if (isArabic) "النقاط الإجمالية" else "Total Points", style = MaterialTheme.typography.labelMedium.copy(color = GlassAccentLight))
                     Text("$totalScore", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = GlassWhite))
                 }
                 GlassCard(modifier = Modifier.weight(1f), padding = PaddingValues(16.dp)) {
-                    Icon(Icons.Outlined.CheckCircle, null, tint = GlassSuccess, modifier = Modifier.size(32.dp).padding(bottom = 8.dp))
+                    Icon(Icons.Filled.CheckCircle, null, tint = GlassSuccess, modifier = Modifier.size(32.dp).padding(bottom = 8.dp))
                     Text(if (isArabic) "أيام كاملة" else "Perfect Days", style = MaterialTheme.typography.labelMedium.copy(color = GlassAccentLight))
                     Text("$perfectDays", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = GlassWhite))
                 }
@@ -490,8 +486,7 @@ fun AdvancedStatsScreen(isArabic: Boolean, history: List<DailyRecord>) {
         if (historyItems.isEmpty()) {
             item { Text(if (isArabic) "لا توجد بيانات بعد." else "No records yet.", color = GlassAccentLight, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
         } else {
-            items(historyItems.size) { index ->
-                val day = historyItems[index]
+            items(historyItems) { day ->
                 val missed = mutableListOf<String>()
                 if (!day.fajrDone) missed.add(if (isArabic) "الفجر" else "Fajr")
                 if (!day.dhuhrDone) missed.add(if (isArabic) "الظهر" else "Dhuhr")
@@ -562,16 +557,15 @@ fun FullScreenHisn(isArabic: Boolean, onBack: () -> Unit) {
     if (activeCategory == null) {
         Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, null, tint = GlassWhite, modifier = Modifier.scale(if(isArabic) -1f else 1f)) }
+                IconButton(onClick = onBack) { Icon(Icons.Filled.KeyboardArrowLeft, null, tint = GlassWhite, modifier = Modifier.scale(if(isArabic) -1f else 1f)) }
                 Text(text = if (isArabic) "حصن المسلم" else "Hisn Al-Muslim", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(start = 16.dp))
             }
             val cats = listOf("sleep" to (if(isArabic) "أذكار النوم" else "Sleep"), "wakeup" to (if(isArabic) "الاستيقاظ" else "Wake up"), "food" to (if(isArabic) "الطعام" else "Food"), "travel" to (if(isArabic) "السفر" else "Travel"), "home" to (if(isArabic) "المنزل" else "Home"), "mosque" to (if(isArabic) "المسجد" else "Mosque"), "toilet" to (if(isArabic) "الخلاء" else "Toilet"), "rain" to (if(isArabic) "المطر" else "Rain"))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(cats.size) { index ->
-                    val cat = cats[index]
+                items(cats) { cat ->
                     Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(16.dp)).clickable { activeCategory = cat.first }.padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(text = cat.second, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
-                        Icon(Icons.Outlined.ChevronRight, null, tint = GlassAccentLight, modifier = Modifier.scale(if(isArabic) -1f else 1f))
+                        Icon(Icons.Filled.KeyboardArrowRight, null, tint = GlassAccentLight, modifier = Modifier.scale(if(isArabic) -1f else 1f))
                     }
                 }
             }
@@ -580,12 +574,11 @@ fun FullScreenHisn(isArabic: Boolean, onBack: () -> Unit) {
         val list = hisnAlMuslimData[activeCategory] ?: emptyList()
         Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { activeCategory = null }) { Icon(Icons.Outlined.ArrowBack, null, tint = GlassWhite, modifier = Modifier.scale(if(isArabic) -1f else 1f)) }
+                IconButton(onClick = { activeCategory = null }) { Icon(Icons.Filled.KeyboardArrowLeft, null, tint = GlassWhite, modifier = Modifier.scale(if(isArabic) -1f else 1f)) }
                 Text(text = if (isArabic) "الأذكار" else "Supplications", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(start = 16.dp))
             }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(list.size) { index ->
-                    val item = list[index]
+                items(list) { item ->
                     GlassCard {
                         Text(text = item.text, style = MaterialTheme.typography.titleMedium.copy(lineHeight = 32.sp, fontWeight = FontWeight.Bold, color = GlassWhite), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                         if (!isArabic && item.translation.isNotEmpty()) {
@@ -615,9 +608,9 @@ fun FullScreenDhikrReading(type: String, isArabic: Boolean, onComplete: () -> Un
 
     Column(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.CenterHorizontally) {
         Row(modifier = Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, null, tint = GlassWhite) }
+            IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, null, tint = GlassWhite) }
             Text(text = if (type == "morning") (if(isArabic) "أذكار الصباح" else "Morning Dhikr") else (if(isArabic) "أذكار المساء" else "Evening Dhikr"), style = MaterialTheme.typography.titleLarge.copy(color = GlassAccent, fontWeight = FontWeight.Bold))
-            IconButton(onClick = { currentIndex = 0; isFinished = false; currentCountsLeft.clear(); currentCountsLeft.addAll(list.map { it.count }) }) { Icon(Icons.Outlined.Refresh, null, tint = GlassWhite) }
+            IconButton(onClick = { currentIndex = 0; isFinished = false; currentCountsLeft.clear(); currentCountsLeft.addAll(list.map { it.count }) }) { Icon(Icons.Filled.Refresh, null, tint = GlassWhite) }
         }
 
         if (!isFinished && currentDhikr != null) {
@@ -732,6 +725,8 @@ fun WorshipCelebrationDialog(title: String, description: String, isArabic: Boole
         )
     }
 }
+
+data class Particle(var x: Float, var y: Float, var speedY: Float, var speedX: Float, val color: Color, val isBalloon: Boolean, val size: Float)
 
 @Composable
 fun CelebrationEffect() {
