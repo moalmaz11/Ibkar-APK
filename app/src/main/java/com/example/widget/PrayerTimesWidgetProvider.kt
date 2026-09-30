@@ -1,4 +1,4 @@
-package com.example.widget
+package com.moalmaz.ibkar.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -7,8 +7,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
-import com.example.MainActivity
-import com.example.R
+import com.moalmaz.ibkar.MainActivity
+import com.moalmaz.ibkar.R
 
 class PrayerTimesWidgetProvider : AppWidgetProvider() {
 
@@ -20,7 +20,7 @@ class PrayerTimesWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == "com.example.widget.REFRESH_TIMES" || intent.action == Intent.ACTION_SCREEN_ON) {
+        if (intent.action == "com.moalmaz.ibkar.widget.REFRESH_TIMES" || intent.action == Intent.ACTION_SCREEN_ON) {
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val thisWidget = ComponentName(context, PrayerTimesWidgetProvider::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
