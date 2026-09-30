@@ -1,8 +1,8 @@
-package com.example.widget
+package com.moalmaz.ibkar.widget
 
 import android.content.Context
 import android.graphics.*
-import com.example.notification.PrayerTimeCalculator
+import com.moalmaz.ibkar.notification.PrayerTimeCalculator
 import java.util.Calendar
 
 data class UpcomingPrayerInfoForWidget(
@@ -114,14 +114,9 @@ object WidgetHelper {
         val canvas = Canvas(bitmap)
 
         val upcoming = getUpcomingPrayerInfo(context)
-        val colors = when (upcoming?.tag) {
-            "fajr" -> intArrayOf(0xFF0F1E36.toInt(), 0xFF1D3557.toInt())
-            "dhuhr" -> intArrayOf(0xFF4D342F.toInt(), 0xFF3E2723.toInt())
-            "asr" -> intArrayOf(0xFF37474F.toInt(), 0xFF263238.toInt())
-            "maghrib" -> intArrayOf(0xFF4A148C.toInt(), 0xFF311B92.toInt())
-            "isha" -> intArrayOf(0xFF0D1B2A.toInt(), 0xFF1B263B.toInt())
-            else -> intArrayOf(0xFF064E3B.toInt(), 0xFF022C22.toInt())
-        }
+        
+        // الألوان الزجاجية الكحلية الداكنة الموحدة مع التطبيق
+        val colors = intArrayOf(0xFF0F172A.toInt(), 0xFF1E1B4B.toInt())
 
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val bgGrad = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), colors, null, Shader.TileMode.CLAMP)
@@ -129,6 +124,7 @@ object WidgetHelper {
         val rect = RectF(8f, 8f, (width - 8).toFloat(), (height - 8).toFloat())
         canvas.drawRoundRect(rect, 30f, 30f, paint)
 
+        // إطار زجاجي شفاف
         paint.shader = null
         paint.color = Color.WHITE
         paint.alpha = 30
@@ -177,7 +173,7 @@ object WidgetHelper {
 
             val pillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
             pillPaint.color = Color.WHITE
-            pillPaint.alpha = 35
+            pillPaint.alpha = 20
             val pillRect = RectF(515f, 134f, 745f, 178f)
             canvas.drawRoundRect(pillRect, 16f, 16f, pillPaint)
 
@@ -191,10 +187,11 @@ object WidgetHelper {
             paint.alpha = 190
             canvas.drawText("الوقت المتبقي:", 55f, 58f, paint)
 
+            // لون الأرقام (أرجواني زجاجي ساطع)
             paint.alpha = 255
             paint.textSize = 62f
             paint.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-            paint.color = Color.parseColor("#FFD54F")
+            paint.color = Color.parseColor("#818CF8") 
             canvas.drawText(countdownFormatted, 50f, 125f, paint)
 
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
@@ -216,22 +213,25 @@ object WidgetHelper {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        val colors = intArrayOf(0xFF071913.toInt(), 0xFF142D21.toInt())
+        // الألوان الزجاجية الكحلية الداكنة الموحدة مع التطبيق
+        val colors = intArrayOf(0xFF0F172A.toInt(), 0xFF1E1B4B.toInt())
+        
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val bgGrad = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), colors, null, Shader.TileMode.CLAMP)
         paint.shader = bgGrad
         val rect = RectF(10f, 10f, (width - 10).toFloat(), (height - 10).toFloat())
         canvas.drawRoundRect(rect, 40f, 40f, paint)
 
+        // إطار زجاجي شفاف
         paint.shader = null
-        paint.color = Color.parseColor("#44B0BEC5")
+        paint.color = Color.parseColor("#33FFFFFF")
         paint.strokeWidth = 2.5f
         paint.style = Paint.Style.STROKE
         canvas.drawRoundRect(rect, 40f, 40f, paint)
 
         paint.reset()
         paint.isAntiAlias = true
-        paint.color = Color.parseColor("#FFD54F")
+        paint.color = Color.parseColor("#818CF8") // لون العنوان (أرجواني)
         paint.textSize = 34f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         paint.textAlign = Paint.Align.RIGHT
@@ -257,13 +257,15 @@ object WidgetHelper {
             val isUpcoming = upcoming != null && upcoming.name.contains(item.first)
             val rowRect = RectF(60f, currentY - 45f, 740f, currentY + 15f)
             val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+            
             if (isUpcoming) {
-                fillPaint.color = Color.parseColor("#10B981")
-                fillPaint.alpha = 70
+                // تظليل الصلاة القادمة بلون أرجواني شفاف
+                fillPaint.color = Color.parseColor("#818CF8")
+                fillPaint.alpha = 50
                 canvas.drawRoundRect(rowRect, 18f, 18f, fillPaint)
 
                 val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-                borderPaint.color = Color.parseColor("#FFD54F")
+                borderPaint.color = Color.parseColor("#818CF8")
                 borderPaint.style = Paint.Style.STROKE
                 borderPaint.strokeWidth = 2.2f
                 canvas.drawRoundRect(rowRect, 18f, 18f, borderPaint)
@@ -278,8 +280,9 @@ object WidgetHelper {
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             paint.textAlign = Paint.Align.RIGHT
             paint.textSize = 28f
+            
             if (isUpcoming) {
-                paint.color = Color.parseColor("#FFD54F")
+                paint.color = Color.parseColor("#818CF8")
                 paint.alpha = 255
                 canvas.drawText("${item.first} (القادمة)", 715f, currentY - 5f, paint)
             } else {
@@ -290,10 +293,11 @@ object WidgetHelper {
 
             paint.textAlign = Paint.Align.LEFT
             paint.textSize = 28f
+            
             if (isUpcoming) {
-                paint.color = Color.parseColor("#FFD54F")
+                paint.color = Color.parseColor("#818CF8")
             } else {
-                paint.color = Color.parseColor("#FFE082")
+                paint.color = Color.parseColor("#A5B4FC") // الأوقات العادية بلون أرجواني فاتح
             }
             canvas.drawText(item.second, 85f, currentY - 5f, paint)
             currentY += stepY
