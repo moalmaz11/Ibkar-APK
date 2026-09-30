@@ -1,7 +1,6 @@
 package com.moalmaz.ibkar
 
 import android.Manifest
-import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
