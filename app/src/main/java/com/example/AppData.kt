@@ -1,9 +1,11 @@
-package com.example
+package com.moalmaz.ibkar
 
 import android.content.Context
 import android.location.LocationManager
 
+// ==========================================
 // 1. قاعدة بيانات الموقع
+// ==========================================
 data class CityLocation(val nameAr: String, val nameEn: String, val lat: Float, val lng: Float)
 val egyptCities = listOf(
     CityLocation("القاهرة", "Cairo", 30.0444f, 31.2357f), CityLocation("الجيزة", "Giza", 30.0131f, 31.2089f),
@@ -18,7 +20,8 @@ val egyptCities = listOf(
     CityLocation("الفيوم", "Faiyum", 29.3084f, 30.8428f), CityLocation("بني سويف", "Beni Suef", 29.0661f, 31.0994f),
     CityLocation("المنيا", "Minya", 28.0871f, 30.7618f), CityLocation("أسيوط", "Asyut", 27.1810f, 31.1837f),
     CityLocation("سوهاج", "Sohag", 26.5570f, 31.6948f), CityLocation("قنا", "Qena", 26.1615f, 32.7181f),
-    CityLocation("الأقصر", "Luxor", 25.6872f, 32.6396f), CityLocation("أسوان", "Aswan", 24.0889f, 32.8998f)
+    CityLocation("الأقصر", "Luxor", 25.6872f, 32.6396f), CityLocation("أسوان", "Aswan", 24.0889f, 32.8998f),
+    CityLocation("الوادي الجديد", "New Valley", 25.4390f, 30.5586f)
 )
 
 fun getNearestCity(lat: Float, lng: Float): CityLocation = egyptCities.minByOrNull { city ->
@@ -36,7 +39,9 @@ fun updateLocationOffline(context: Context, onResult: (Boolean, String, Float, F
     } catch (e: SecurityException) { onResult(false, "مرفوض", 0f, 0f) }
 }
 
+// ==========================================
 // 2. قاعدة بيانات الأذكار كاملة
+// ==========================================
 data class StepDhikr(val text: String, val count: Int, val benefit: String = "", val translation: String = "")
 
 val morningAdhkarList = listOf(
@@ -66,12 +71,36 @@ val eveningAdhkarList = listOf(
 )
 
 val hisnAlMuslimData = mapOf(
-    "sleep" to listOf(StepDhikr("بِاسْمِكَ رَبِّـي وَضَعْـتُ جَنْـبي، وَبِكَ أَرْفَعُـه...", 1, "الحفظ أثناء النوم", "In Your name my Lord, I lie down..."), StepDhikr("اللَّهُمَّ إِنَّكَ خَلَقْتَ نَفْسِي وَأَنْتَ تَوَفَّاهَا...", 1, "تسليم الروح لله", "O Allah, You created my soul...")),
-    "wakeup" to listOf(StepDhikr("الحَمْـدُ لِلّهِ الّذي أَحْـيانا بَعْـدَ ما أَماتَـنا وَإليه النُّـشور.", 1, "شكر الله", "All praise is to Allah who gave us life..."), StepDhikr("لا إلهَ إلاّ اللّهُ وَحْـدَهُ لا شَـريكَ له...", 1, "توحيد خالص", "None has the right to be worshipped except Allah...")),
-    "food" to listOf(StepDhikr("بِسْمِ اللَّهِ.", 1, "عند البدء", "In the name of Allah."), StepDhikr("الْحَمْدُ لِلَّهِ الَّذِي أَطْعَمَنِي هَذَا وَرَزَقَنِيهِ مِنْ غَيْرِ حَوْلٍ مِنِّي وَلَا قُوَّةٍ.", 1, "عند الانتهاء", "Praise be to Allah who fed me this...")),
-    "travel" to listOf(StepDhikr("سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ...", 1, "دعاء الركوب", "Glory to Him who has subjected this to us..."), StepDhikr("اللَّهُمَّ إِنَّا نَسْأَلُكَ فِي سَفَرِنَا هَذَا الْبِرَّ وَالتَّقْوَى...", 1, "دعاء السفر", "O Allah, we ask You on this journey for righteousness...")),
-    "home" to listOf(StepDhikr("بِسْـمِ اللهِ وَلَجْنـا، وَبِسْـمِ اللهِ خَـرَجْنـا...", 1, "عند الدخول", "In the name of Allah we enter..."), StepDhikr("بِسْمِ اللَّهِ، تَوَكَّلْتُ عَلَى اللَّهِ، وَلَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ.", 1, "عند الخروج", "In the name of Allah, I place my trust in Allah...")),
-    "mosque" to listOf(StepDhikr("اللَّهُمَّ افْتَحْ لِي أَبْوَابَ رَحْمَتِكَ.", 1, "عند الدخول", "O Allah, open the doors of Your mercy for me."), StepDhikr("اللَّهُمَّ إِنِّي أَسْأَلُكَ مِنْ فَضْلِكَ.", 1, "عند الخروج", "O Allah, I ask You from Your bounty.")),
-    "toilet" to listOf(StepDhikr("بِسْمِ الله، اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْخُبْثِ وَالْخَبَائِثِ.", 1, "عند الدخول", "O Allah I seek refuge in You from evil..."), StepDhikr("غُفْرَانَكَ.", 1, "عند الخروج", "I ask You for forgiveness.")),
-    "rain" to listOf(StepDhikr("اللَّهُمَّ صَيِّباً نَافِعاً.", 1, "عند نزول المطر", "O Allah, (bring) beneficial rain cloud."), StepDhikr("مُطِرْنَا بِفَضْلِ اللَّهِ وَرَحْمَتِهِ.", 1, "بعد نزول المطر", "It has rained by the bounty of Allah and His mercy."))
+    "sleep" to listOf(
+        StepDhikr("بِاسْمِكَ رَبِّـي وَضَعْـتُ جَنْـبي، وَبِكَ أَرْفَعُـه...", 1, "الحفظ أثناء النوم", "In Your name my Lord, I lie down..."),
+        StepDhikr("اللَّهُمَّ إِنَّكَ خَلَقْتَ نَفْسِي وَأَنْتَ تَوَفَّاهَا...", 1, "تسليم الروح لله", "O Allah, You created my soul...")
+    ),
+    "wakeup" to listOf(
+        StepDhikr("الحَمْـدُ لِلّهِ الّذي أَحْـيانا بَعْـدَ ما أَماتَـنا وَإليه النُّـشور.", 1, "شكر الله على نعمة الحياة", "All praise is to Allah who gave us life..."),
+        StepDhikr("لا إلهَ إلاّ اللّهُ وَحْـدَهُ لا شَـريكَ له، لهُ المُلـكُ ولهُ الحَمـد، وهوَ على كلّ شيءٍ قدير.", 1, "توحيد خالص", "None has the right to be worshipped except Allah...")
+    ),
+    "food" to listOf(
+        StepDhikr("بِسْمِ اللَّهِ. (عند البدء)", 1, "البركة في الطعام", "In the name of Allah (Before eating)"),
+        StepDhikr("الْحَمْدُ لِلَّهِ الَّذِي أَطْعَمَنِي هَذَا وَرَزَقَنِيهِ مِنْ غَيْرِ حَوْلٍ مِنِّي وَلَا قُوَّةٍ. (عند الانتهاء)", 1, "غفران ما تقدم من الذنب", "Praise be to Allah who fed me this... (After eating)")
+    ),
+    "travel" to listOf(
+        StepDhikr("سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ * وَإِنَّا إِلَى رَبِّنَا لَمُنْقَلِبُونَ.", 1, "دعاء الركوب", "Glory to Him who has subjected this to us..."),
+        StepDhikr("اللَّهُمَّ إِنَّا نَسْأَلُكَ فِي سَفَرِنَا هَذَا الْبِرَّ وَالتَّقْوَى...", 1, "دعاء السفر", "O Allah, we ask You on this journey for righteousness...")
+    ),
+    "home" to listOf(
+        StepDhikr("بِسْـمِ اللهِ وَلَجْنـا، وَبِسْـمِ اللهِ خَـرَجْنـا، وَعَلـى رَبِّنـا تَوَكّّلْـنا. (الدخول)", 1, "السلامة في المنزل", "In the name of Allah we enter..."),
+        StepDhikr("بِسْمِ اللَّهِ، تَوَكَّلْتُ عَلَى اللَّهِ، وَلَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ. (الخروج)", 1, "كُفيت ووُقيت وهُديت", "In the name of Allah, I place my trust in Allah...")
+    ),
+    "mosque" to listOf(
+        StepDhikr("اللَّهُمَّ افْتَحْ لِي أَبْوَابَ رَحْمَتِكَ. (الدخول)", 1, "طلب الرحمة", "O Allah, open the doors of Your mercy for me."),
+        StepDhikr("اللَّهُمَّ إِنِّي أَسْأَلُكَ مِنْ فَضْلِكَ. (الخروج)", 1, "طلب الفضل والرزق", "O Allah, I ask You from Your bounty.")
+    ),
+    "toilet" to listOf(
+        StepDhikr("بِسْمِ الله، اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْخُبْثِ وَالْخَبَائِثِ. (الدخول)", 1, "الوقاية من الشياطين", "In the name of Allah, O Allah I seek refuge in You from evil..."),
+        StepDhikr("غُفْرَانَكَ. (الخروج)", 1, "طلب المغفرة", "I ask You for forgiveness.")
+    ),
+    "rain" to listOf(
+        StepDhikr("اللَّهُمَّ صَيِّباً نَافِعاً.", 1, "عند نزول المطر", "O Allah, (bring) beneficial rain cloud."),
+        StepDhikr("مُطِرْنَا بِفَضْلِ اللَّهِ وَرَحْمَتِهِ.", 1, "بعد نزول المطر", "It has rained by the bounty of Allah and His mercy.")
+    )
 )
