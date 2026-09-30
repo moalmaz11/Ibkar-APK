@@ -1,5 +1,7 @@
 package com.moalmaz.ibkar
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
@@ -20,12 +22,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.moalmaz.ibkar.data.DailyRecord
+import com.moalmaz.ibkar.notification.PrayerNotificationManager
 import java.util.Calendar
 import kotlin.random.Random
 
@@ -157,7 +161,7 @@ fun HomeScreen(
 fun AdvancedStatsScreen(isArabic: Boolean, history: List<DailyRecord>) {
     val totalScore = history.sumOf { it.calculatePoints() }
     val perfectDays = history.count { it.calculatePoints() == 100 }
-    val reversedHistory = history.reversed()
+    val reversedHistory = history.asReversed()
 
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 20.dp, bottom = 100.dp, start = 20.dp, end = 20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item { Text(text = if (isArabic) "سجل الإنجازات" else "Achievement Log", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = GlassWhite)) }
