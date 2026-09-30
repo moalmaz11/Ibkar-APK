@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -114,7 +115,6 @@ fun updateLocationOffline(context: Context, onResult: (Boolean, String, Float, F
     }
 }
 
-// ألوان تصميم Glassmorphism العصري
 val GlassBgGradient = listOf(Color(0xFF1E1B4B), Color(0xFF312E81), Color(0xFF111827))
 val GlassAccent = Color(0xFF818CF8)
 val GlassAccentLight = Color(0xFFA5B4FC)
@@ -194,18 +194,20 @@ fun MainAppContent(
     val celebrationPrefs = remember(context) { context.getSharedPreferences("celebration_prefs", Context.MODE_PRIVATE) }
     var showDaily100Celebration by remember { mutableStateOf(false) }
     var showTotal100Celebration by remember { mutableStateOf(false) }
+    var hasDismissedDailyCelebrationToday by remember { mutableStateOf(false) }
+    var hasDismissedTotalCelebration by remember { mutableStateOf(false) }
 
     val dailyPoints = record?.calculatePoints() ?: 0
     LaunchedEffect(dailyPoints, record?.date) {
         val todayStr = record?.date ?: ""
         val actualToday = DateHelper.getTodayDateString(context)
-        if (dailyPoints >= 100 && todayStr == actualToday && todayStr.isNotEmpty()) {
+        if (dailyPoints >= 100 && todayStr == actualToday && todayStr.isNotEmpty() && !hasDismissedDailyCelebrationToday) {
             val lastCelebrated = celebrationPrefs.getString("daily_100_last_date", "")
             if (todayStr != lastCelebrated) showDaily100Celebration = true
         }
     }
     LaunchedEffect(totalPoints) {
-        if (totalPoints >= 100) {
+        if (totalPoints >= 100 && !hasDismissedTotalCelebration) {
             val alreadyCelebrated = celebrationPrefs.getBoolean("total_100_celebrated", false)
             if (!alreadyCelebrated) showTotal100Celebration = true
         }
@@ -312,7 +314,6 @@ fun MainAppContent(
     Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(GlassBgGradient)), contentAlignment = Alignment.TopCenter) {
         LazyColumn(modifier = Modifier.fillMaxWidth().widthIn(max = 660.dp).windowInsetsPadding(WindowInsets.safeDrawing), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             
-            // Header
             item {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 10.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -333,7 +334,6 @@ fun MainAppContent(
                 }
             }
 
-            // Date Navigator
             item {
                 GlassCard {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -348,7 +348,6 @@ fun MainAppContent(
                 }
             }
 
-            // Tracker Card
             item {
                 GlassCard {
                     Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
@@ -379,7 +378,6 @@ fun MainAppContent(
                 }
             }
 
-            // Prayers List
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(text = if (isArabic) "الصلوات المفروضة" else "Obligatory Prayers", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(horizontal = 4.dp))
@@ -393,7 +391,6 @@ fun MainAppContent(
                 }
             }
 
-            // Quran & Worship
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(text = if (isArabic) "العبادات اليومية" else "Daily Worship", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(horizontal = 4.dp, top = 16.dp))
@@ -446,7 +443,6 @@ fun MainAppContent(
                 }
             }
 
-            // Hisn Al-Muslim
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(text = if (isArabic) "حصن المسلم" else "Hisn Al-Muslim", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(horizontal = 4.dp, top = 16.dp))
@@ -469,13 +465,9 @@ fun MainAppContent(
             item { Spacer(modifier = Modifier.height(20.dp)) }
         }
     }
-    if (showStatsDialog) {
-        StatsScreen(isArabic = isArabic, onDismiss = { showStatsDialog = false })
-    }
 
-    if (activeHisnCategory != null) {
-        HisnAlMuslimDialog(category = activeHisnCategory!!, isArabic = isArabic, onDismiss = { activeHisnCategory = null })
-    }
+    if (showStatsDialog) { StatsScreen(isArabic = isArabic, onDismiss = { showStatsDialog = false }) }
+    if (activeHisnCategory != null) { HisnAlMuslimDialog(category = activeHisnCategory!!, isArabic = isArabic, onDismiss = { activeHisnCategory = null }) }
 
     if (showSettingsDialog) {
         AlertDialog(
@@ -507,30 +499,12 @@ fun MainAppContent(
                     }
                     Slider(value = offsetMinutesVal.toFloat(), onValueChange = { newValue -> offsetMinutesVal = newValue.toInt(); notificationSettingsPrefs.edit().putInt("prayer_offset_minutes", newValue.toInt()).apply() }, onValueChangeFinished = { com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, valueRange = 0f..30f, steps = 6, modifier = Modifier.height(28.dp))
                     
-                    // حقوق المطور 
                     HorizontalDivider(color = GlassPanelBorder)
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = if (isArabic) "إِبْكَـار - صُنع بكل حب بواسطة مصطفى الماظ" else "Ibkar - Made with love by Mostafa Almaz",
-                            style = MaterialTheme.typography.labelSmall.copy(color = GlassAccentLight, fontWeight = FontWeight.Bold)
-                        )
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(text = if (isArabic) "إِبْكَـار - صُنع بكل حب بواسطة مصطفى الماظ" else "Ibkar - Made with love by Mostafa Almaz", style = MaterialTheme.typography.labelSmall.copy(color = GlassAccentLight, fontWeight = FontWeight.Bold))
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Button(
-                                onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ibkar.vercel.app"))) } catch (e: Exception) {} },
-                                colors = ButtonDefaults.buttonColors(containerColor = GlassAccent.copy(alpha = 0.2f))
-                            ) {
-                                Text(if (isArabic) "الموقع الرسمي" else "Website", color = GlassAccent, fontWeight = FontWeight.Bold)
-                            }
-                            Button(
-                                onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.facebook.com/ibkar.application"))) } catch (e: Exception) {} },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2).copy(alpha = 0.2f))
-                            ) {
-                                Text("Facebook", color = Color(0xFF8A93FC), fontWeight = FontWeight.Bold)
-                            }
+                            Button(onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ibkar.vercel.app"))) } catch (e: Exception) {} }, colors = ButtonDefaults.buttonColors(containerColor = GlassAccent.copy(alpha = 0.2f))) { Text(if (isArabic) "الموقع الرسمي" else "Website", color = GlassAccent, fontWeight = FontWeight.Bold) }
+                            Button(onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.facebook.com/ibkar.application"))) } catch (e: Exception) {} }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2).copy(alpha = 0.2f))) { Text("Facebook", color = Color(0xFF8A93FC), fontWeight = FontWeight.Bold) }
                         }
                     }
                 }
@@ -770,8 +744,6 @@ fun WorshipCelebrationDialog(title: String, description: String, isArabic: Boole
     }
 }
 
-data class Particle(var x: Float, var y: Float, var speedY: Float, var speedX: Float, val color: Color, val isBalloon: Boolean, val size: Float)
-
 @Composable
 fun CelebrationEffect() {
     val particles = remember { 
@@ -891,3 +863,5 @@ fun HisnAlMuslimDialog(category: String, isArabic: Boolean, onDismiss: () -> Uni
         confirmButton = { Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(if (isArabic) "إغلاق" else "Close") } }
     )
 }
+
+data class Particle(var x: Float, var y: Float, var speedY: Float, var speedX: Float, val color: Color, val isBalloon: Boolean, val size: Float)
