@@ -1,4 +1,4 @@
-package com.example.widget
+package com.moalmaz.ibkar.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -7,8 +7,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
-import com.example.MainActivity
-import com.example.R
+import com.moalmaz.ibkar.MainActivity
+import com.moalmaz.ibkar.R
 
 class CountdownWidgetProvider : AppWidgetProvider() {
 
@@ -20,7 +20,7 @@ class CountdownWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == "com.example.widget.REFRESH_COUNTDOWN" || intent.action == Intent.ACTION_SCREEN_ON) {
+        if (intent.action == "com.moalmaz.ibkar.widget.REFRESH_COUNTDOWN" || intent.action == Intent.ACTION_SCREEN_ON) {
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val thisWidget = ComponentName(context, CountdownWidgetProvider::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
@@ -54,7 +54,7 @@ class CountdownWidgetProvider : AppWidgetProvider() {
             try {
                 val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
                 val intent = Intent(context, CountdownWidgetProvider::class.java).apply {
-                    action = "com.example.widget.REFRESH_COUNTDOWN"
+                    action = "com.moalmaz.ibkar.widget.REFRESH_COUNTDOWN"
                 }
                 val pending = PendingIntent.getBroadcast(
                     context,
