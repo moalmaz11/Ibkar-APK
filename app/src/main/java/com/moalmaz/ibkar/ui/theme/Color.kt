@@ -1,4 +1,4 @@
-package com.example.ui.theme
+package com.moalmaz.ibkar.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

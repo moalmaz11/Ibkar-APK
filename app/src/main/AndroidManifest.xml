@@ -36,7 +36,7 @@
         </activity>
 
         <receiver 
-            android:name="com.example.notification.BootReceiver" 
+            android:name="com.moalmaz.ibkar.notification.BootReceiver" 
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -44,20 +44,20 @@
         </receiver>
 
         <receiver 
-            android:name="com.example.notification.PrayerNotificationReceiver" 
+            android:name="com.moalmaz.ibkar.notification.PrayerNotificationReceiver" 
             android:exported="false" />
 
         <receiver 
-            android:name="com.example.notification.PrayerActionReceiver" 
+            android:name="com.moalmaz.ibkar.notification.PrayerActionReceiver" 
             android:exported="false" />
 
         <receiver 
-            android:name="com.example.widget.CountdownWidgetProvider"
+            android:name="com.moalmaz.ibkar.widget.CountdownWidgetProvider"
             android:label="إِبْكَـار - عداد الصلاة القادمة"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.example.widget.REFRESH_COUNTDOWN" />
+                <action android:name="com.moalmaz.ibkar.widget.REFRESH_COUNTDOWN" />
                 <action android:name="android.intent.action.SCREEN_ON" />
             </intent-filter>
             <meta-data
@@ -66,12 +66,12 @@
         </receiver>
 
         <receiver 
-            android:name="com.example.widget.PrayerTimesWidgetProvider"
+            android:name="com.moalmaz.ibkar.widget.PrayerTimesWidgetProvider"
             android:label="إِبْكَـار - مواقيت الصلاة اليومية"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.example.widget.REFRESH_TIMES" />
+                <action android:name="com.moalmaz.ibkar.widget.REFRESH_TIMES" />
                 <action android:name="android.intent.action.SCREEN_ON" />
             </intent-filter>
             <meta-data

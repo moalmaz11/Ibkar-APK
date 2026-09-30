@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example"
+    namespace = "com.moalmaz.ibkar"
     compileSdk = 36
 
     defaultConfig {

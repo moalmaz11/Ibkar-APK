@@ -1,4 +1,4 @@
-package com.example.notification
+package com.moalmaz.ibkar.notification
 
 import java.util.Calendar
 import java.util.TimeZone

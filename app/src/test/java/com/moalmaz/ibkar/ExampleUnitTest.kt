@@ -1,8 +1,8 @@
-package com.example
+package com.moalmaz.ibkar
 
 import org.junit.Assert.*
 import org.junit.Test
-import com.example.notification.PrayerTimeCalculator
+import com.moalmaz.ibkar.notification.PrayerTimeCalculator
 
 class ExampleUnitTest {
   @Test

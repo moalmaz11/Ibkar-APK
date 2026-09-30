@@ -1,4 +1,4 @@
-package com.example.notification
+package com.moalmaz.ibkar.notification
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -15,12 +15,12 @@ class BootReceiver : BroadcastReceiver() {
                 
                 // Immediately refresh the home screen widgets on boot
                 try {
-                    val intent1 = Intent(context, Class.forName("com.example.widget.CountdownWidgetProvider")).apply {
-                        action = "com.example.widget.REFRESH_COUNTDOWN"
+                    val intent1 = Intent(context, Class.forName("com.moalmaz.ibkar.widget.CountdownWidgetProvider")).apply {
+                        action = "com.moalmaz.ibkar.widget.REFRESH_COUNTDOWN"
                     }
                     context.sendBroadcast(intent1)
-                    val intent2 = Intent(context, Class.forName("com.example.widget.PrayerTimesWidgetProvider")).apply {
-                        action = "com.example.widget.REFRESH_TIMES"
+                    val intent2 = Intent(context, Class.forName("com.moalmaz.ibkar.widget.PrayerTimesWidgetProvider")).apply {
+                        action = "com.moalmaz.ibkar.widget.REFRESH_TIMES"
                     }
                     context.sendBroadcast(intent2)
                 } catch (e: Exception) {

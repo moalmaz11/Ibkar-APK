@@ -1,4 +1,4 @@
-package com.example.data
+package com.moalmaz.ibkar.data
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull

@@ -1,4 +1,4 @@
-package com.example
+package com.moalmaz.ibkar
 
 import android.Manifest
 import android.app.TimePickerDialog
@@ -49,13 +49,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.data.DailyRecord
-import com.example.data.DateHelper
-import com.example.data.WorshipDatabase
-import com.example.notification.PrayerNotificationManager
-import com.example.notification.PrayerTimeCalculator
-import com.example.ui.WorshipViewModel
-import com.example.ui.theme.MyApplicationTheme
+import com.moalmaz.ibkar.data.DailyRecord
+import com.moalmaz.ibkar.data.DateHelper
+import com.moalmaz.ibkar.data.WorshipDatabase
+import com.moalmaz.ibkar.notification.PrayerNotificationManager
+import com.moalmaz.ibkar.notification.PrayerTimeCalculator
+import com.moalmaz.ibkar.ui.WorshipViewModel
+import com.moalmaz.ibkar.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext

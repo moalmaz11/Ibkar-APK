@@ -1,13 +1,13 @@
-package com.example.ui
+package com.moalmaz.ibkar.ui
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.data.DailyRecord
-import com.example.data.DateHelper
-import com.example.data.UserProfile
-import com.example.data.WorshipDatabase
-import com.example.data.WorshipRepository
+import com.moalmaz.ibkar.data.DailyRecord
+import com.moalmaz.ibkar.data.DateHelper
+import com.moalmaz.ibkar.data.UserProfile
+import com.moalmaz.ibkar.data.WorshipDatabase
+import com.moalmaz.ibkar.data.WorshipRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

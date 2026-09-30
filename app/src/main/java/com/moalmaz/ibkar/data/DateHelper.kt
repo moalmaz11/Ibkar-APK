@@ -1,4 +1,4 @@
-package com.example.data
+package com.moalmaz.ibkar.data
 
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -14,9 +14,9 @@ object DateHelper {
         if (context != null) {
             try {
                 val prefs = context.getSharedPreferences("notification_settings", android.content.Context.MODE_PRIVATE)
-                val lat = prefs.getFloat("user_latitude", com.example.notification.PrayerTimeCalculator.DEFAULT_LATITUDE.toFloat()).toDouble()
-                val lng = prefs.getFloat("user_longitude", com.example.notification.PrayerTimeCalculator.DEFAULT_LONGITUDE.toFloat()).toDouble()
-                val localCal = com.example.notification.PrayerTimeCalculator.getLocalCalendar(lat, lng)
+                val lat = prefs.getFloat("user_latitude", com.moalmaz.ibkar.notification.PrayerTimeCalculator.DEFAULT_LATITUDE.toFloat()).toDouble()
+                val lng = prefs.getFloat("user_longitude", com.moalmaz.ibkar.notification.PrayerTimeCalculator.DEFAULT_LONGITUDE.toFloat()).toDouble()
+                val localCal = com.moalmaz.ibkar.notification.PrayerTimeCalculator.getLocalCalendar(lat, lng)
                 return dateFormat.format(localCal.time)
             } catch (e: Exception) {}
         }

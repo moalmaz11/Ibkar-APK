@@ -1,4 +1,4 @@
-package com.example.notification
+package com.moalmaz.ibkar.notification
 
 import android.app.AlarmManager
 import android.app.NotificationChannel
@@ -12,11 +12,11 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
-import com.example.MainActivity
-import com.example.R
-import com.example.data.DailyRecord
-import com.example.data.DateHelper
-import com.example.data.WorshipDatabase
+import com.moalmaz.ibkar.MainActivity
+import com.moalmaz.ibkar.R
+import com.moalmaz.ibkar.data.DailyRecord
+import com.moalmaz.ibkar.data.DateHelper
+import com.moalmaz.ibkar.data.WorshipDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
