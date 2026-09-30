@@ -157,6 +157,7 @@ fun HomeScreen(
 fun AdvancedStatsScreen(isArabic: Boolean, history: List<DailyRecord>) {
     val totalScore = history.sumOf { it.calculatePoints() }
     val perfectDays = history.count { it.calculatePoints() == 100 }
+    val reversedHistory = history.reversed()
 
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 20.dp, bottom = 100.dp, start = 20.dp, end = 20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item { Text(text = if (isArabic) "سجل الإنجازات" else "Achievement Log", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = GlassWhite)) }
@@ -180,10 +181,11 @@ fun AdvancedStatsScreen(isArabic: Boolean, history: List<DailyRecord>) {
             Text(text = if (isArabic) "أداء الأيام السابقة" else "Previous Days", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(top = 10.dp))
         }
 
-        if (history.isEmpty()) {
+        if (reversedHistory.isEmpty()) {
             item { Text(if (isArabic) "لا توجد بيانات بعد." else "No records yet.", color = GlassAccentLight, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
         } else {
-            items(history.asReversed()) { day ->
+            items(reversedHistory.size) { index ->
+                val day = reversedHistory[index]
                 val missed = mutableListOf<String>()
                 if (!day.fajrDone) missed.add(if (isArabic) "الفجر" else "Fajr")
                 if (!day.dhuhrDone) missed.add(if (isArabic) "الظهر" else "Dhuhr")
@@ -265,7 +267,8 @@ fun FullScreenHisn(isArabic: Boolean, onBack: () -> Unit) {
             }
             val cats = listOf("sleep" to (if(isArabic) "أذكار النوم" else "Sleep"), "wakeup" to (if(isArabic) "الاستيقاظ" else "Wake up"), "food" to (if(isArabic) "الطعام" else "Food"), "travel" to (if(isArabic) "السفر" else "Travel"), "home" to (if(isArabic) "المنزل" else "Home"), "mosque" to (if(isArabic) "المسجد" else "Mosque"), "toilet" to (if(isArabic) "الخلاء" else "Toilet"), "rain" to (if(isArabic) "المطر" else "Rain"))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(cats) { cat ->
+                items(cats.size) { index ->
+                    val cat = cats[index]
                     Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(16.dp)).clickable { activeCategory = cat.first }.padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(text = cat.second, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
                         Icon(Icons.Outlined.ChevronRight, null, tint = GlassAccentLight, modifier = Modifier.scale(if(isArabic) -1f else 1f))
@@ -281,7 +284,8 @@ fun FullScreenHisn(isArabic: Boolean, onBack: () -> Unit) {
                 Text(text = if (isArabic) "الأذكار" else "Supplications", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(start = 16.dp))
             }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(list) { item ->
+                items(list.size) { index ->
+                    val item = list[index]
                     GlassCard {
                         Text(text = item.text, style = MaterialTheme.typography.titleMedium.copy(lineHeight = 32.sp, fontWeight = FontWeight.Bold, color = GlassWhite), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                         if (!isArabic && item.translation.isNotEmpty()) {
