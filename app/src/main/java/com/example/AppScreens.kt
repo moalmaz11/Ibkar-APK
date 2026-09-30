@@ -183,7 +183,7 @@ fun AdvancedStatsScreen(isArabic: Boolean, history: List<DailyRecord>) {
         if (history.isEmpty()) {
             item { Text(if (isArabic) "لا توجد بيانات بعد." else "No records yet.", color = GlassAccentLight, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
         } else {
-            items(history.reversed()) { day ->
+            items(history.asReversed()) { day ->
                 val missed = mutableListOf<String>()
                 if (!day.fajrDone) missed.add(if (isArabic) "الفجر" else "Fajr")
                 if (!day.dhuhrDone) missed.add(if (isArabic) "الظهر" else "Dhuhr")
