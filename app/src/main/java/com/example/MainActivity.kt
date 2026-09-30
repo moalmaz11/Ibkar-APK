@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.moalmaz.ibkar.data.DailyRecord
@@ -189,7 +190,7 @@ fun MainAppNavigation(isArabic: Boolean, onToggleLanguage: () -> Unit, viewModel
                         FullScreenDhikrReading(
                             type = type, isArabic = isArabic, onDismiss = { currentRoute = AppRoute.Home },
                             onComplete = {
-                                val isDone = if (type == "morning") record.morningDhikrDone else record.eveningDhikrDone
+                                val isDone = if (type == "morning") activeRecord.morningDhikrDone else activeRecord.eveningDhikrDone
                                 if (!isDone) { if (type == "morning") viewModel.toggleMorningDhikr() else viewModel.toggleEveningDhikr() }
                                 currentRoute = AppRoute.Home
                             }
