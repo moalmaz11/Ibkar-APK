@@ -356,11 +356,10 @@ fun FullScreenDhikrReading(type: String, isArabic: Boolean, onComplete: () -> Un
     }
 }
 
-// 5. المكونات المساعدة للزجاج العصري
 data class UpcomingPrayerInfo(val tag: String, val name: String, val timeStr: String, val diffMinutes: Int, val diffSeconds: Int)
 
 fun getUpcomingPrayer(todayTimes: Map<String, Pair<Int, Int>>, latitude: Double, longitude: Double, isArabic: Boolean): UpcomingPrayerInfo? {
-    val now = com.example.notification.PrayerTimeCalculator.getLocalCalendar(latitude, longitude)
+    val now = com.moalmaz.ibkar.notification.PrayerTimeCalculator.getLocalCalendar(latitude, longitude)
     val cMin = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
     val cSec = now.get(Calendar.SECOND)
     val cTotal = cMin * 60 + cSec
@@ -417,7 +416,6 @@ fun NextPrayerCountdownCard(upcoming: UpcomingPrayerInfo, isArabic: Boolean) {
     }
 }
 
-// 6. الاحتفالات والتأثيرات
 @Composable
 fun WorshipCelebrationDialog(title: String, description: String, isArabic: Boolean, onDismiss: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
