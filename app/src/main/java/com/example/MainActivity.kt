@@ -1,11 +1,13 @@
-package com.example
+package com.moalmaz.ibkar
 
 import android.Manifest
 import android.app.TimePickerDialog
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -16,6 +18,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -33,21 +36,21 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.data.DailyRecord
-import com.example.data.DateHelper
-import com.example.data.WorshipDatabase
-import com.example.ui.WorshipViewModel
-import com.example.ui.theme.MyApplicationTheme
+import com.moalmaz.ibkar.data.DailyRecord
+import com.moalmaz.ibkar.data.DateHelper
+import com.moalmaz.ibkar.data.WorshipDatabase
+import com.moalmaz.ibkar.ui.WorshipViewModel
+import com.moalmaz.ibkar.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import android.content.Context
+import java.util.Calendar
 
 class MainActivity : ComponentActivity() {
     private var initialDhikrTypeState = mutableStateOf<String?>(null)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        com.example.notification.PrayerNotificationManager.createNotificationChannel(this)
+        com.moalmaz.ibkar.notification.PrayerNotificationManager.createNotificationChannel(this)
         handleIntent(intent)
         setContent {
             val context = LocalContext.current
@@ -131,8 +134,8 @@ fun MainAppNavigation(isArabic: Boolean, onToggleLanguage: () -> Unit, viewModel
     val dailyPoints = activeRecord.calculatePoints()
     
     val todayTimesRaw = remember(prefs.getFloat("user_latitude", 30.0444f), prefs.getFloat("user_longitude", 31.2357f), prefs.getInt("prayer_calc_method", 0)) {
-        val cal = com.example.notification.PrayerTimeCalculator.getLocalCalendar(prefs.getFloat("user_latitude", 30.0444f).toDouble(), prefs.getFloat("user_longitude", 31.2357f).toDouble())
-        com.example.notification.PrayerTimeCalculator.calculatePrayerTimes(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH), prefs.getFloat("user_latitude", 30.0444f).toDouble(), prefs.getFloat("user_longitude", 31.2357f).toDouble(), prefs.getInt("prayer_calc_method", 0))
+        val cal = com.moalmaz.ibkar.notification.PrayerTimeCalculator.getLocalCalendar(prefs.getFloat("user_latitude", 30.0444f).toDouble(), prefs.getFloat("user_longitude", 31.2357f).toDouble())
+        com.moalmaz.ibkar.notification.PrayerTimeCalculator.calculatePrayerTimes(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH), prefs.getFloat("user_latitude", 30.0444f).toDouble(), prefs.getFloat("user_longitude", 31.2357f).toDouble(), prefs.getInt("prayer_calc_method", 0))
     }
     var upcomingPrayerInfoState by remember(todayTimesRaw) { mutableStateOf<UpcomingPrayerInfo?>(null) }
     val isTodaySelected = activeRecord.date == DateHelper.getTodayDateString(context)
@@ -144,7 +147,7 @@ fun MainAppNavigation(isArabic: Boolean, onToggleLanguage: () -> Unit, viewModel
     Scaffold(
         bottomBar = {
             if (currentRoute == AppRoute.Home || currentRoute == AppRoute.Stats) {
-                NavigationBar(containerColor = Color(0xFF0F172A), contentColor = GlassWhite) {
+                NavigationBar(containerColor = Color(0xFF0F172A).copy(alpha = 0.95f), contentColor = GlassWhite) {
                     NavigationBarItem(
                         icon = { Icon(if (currentRoute == AppRoute.Home) Icons.Filled.Home else Icons.Outlined.Home, null) },
                         label = { Text(if (isArabic) "الرئيسية" else "Home") },
@@ -181,7 +184,18 @@ fun MainAppNavigation(isArabic: Boolean, onToggleLanguage: () -> Unit, viewModel
                 }
                 AppRoute.Stats -> AdvancedStatsScreen(isArabic = isArabic, history = historyData)
                 AppRoute.FullScreenHisn -> FullScreenHisn(isArabic = isArabic, onBack = { currentRoute = AppRoute.Home })
-                AppRoute.FullScreenDhikr -> activeDhikrType?.let { type -> FullScreenDhikrReading(type = type, isArabic = isArabic, onDismiss = { currentRoute = AppRoute.Home }, onComplete = { val isDone = if (type == "morning") activeRecord.morningDhikrDone else activeRecord.eveningDhikrDone; if (!isDone) { if (type == "morning") viewModel.toggleMorningDhikr() else viewModel.toggleEveningDhikr() }; currentRoute = AppRoute.Home }) }
+                AppRoute.FullScreenDhikr -> {
+                    activeDhikrType?.let { type ->
+                        FullScreenDhikrReading(
+                            type = type, isArabic = isArabic, onDismiss = { currentRoute = AppRoute.Home },
+                            onComplete = {
+                                val isDone = if (type == "morning") record.morningDhikrDone else record.eveningDhikrDone
+                                if (!isDone) { if (type == "morning") viewModel.toggleMorningDhikr() else viewModel.toggleEveningDhikr() }
+                                currentRoute = AppRoute.Home
+                            }
+                        )
+                    }
+                }
                 else -> {}
             }
 
@@ -205,19 +219,19 @@ fun MainAppNavigation(isArabic: Boolean, onToggleLanguage: () -> Unit, viewModel
                             Text(if(isArabic) "تخصيص الإشعارات" else "Notifications", color = GlassAccentLight, fontWeight = FontWeight.Bold)
                             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(if(isArabic) "تنبيهات الصلوات" else "Prayer Alerts", color = GlassWhite)
-                                Switch(checked = notifyPrayers, onCheckedChange = { notifyPrayers = it; prefs.edit().putBoolean("notify_prayers", it).apply(); com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, colors = SwitchDefaults.colors(checkedThumbColor = GlassSuccess, checkedTrackColor = GlassSuccess.copy(alpha=0.5f)))
+                                Switch(checked = notifyPrayers, onCheckedChange = { notifyPrayers = it; prefs.edit().putBoolean("notify_prayers", it).apply(); com.moalmaz.ibkar.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, colors = SwitchDefaults.colors(checkedThumbColor = GlassSuccess, checkedTrackColor = GlassSuccess.copy(alpha=0.5f)))
                             }
                             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(if(isArabic) "أذكار الصباح" else "Morning Dhikr", color = GlassWhite)
-                                Switch(checked = notifyMorningDhikr, onCheckedChange = { notifyMorningDhikr = it; prefs.edit().putBoolean("notify_morning_dhikr", it).apply(); com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, colors = SwitchDefaults.colors(checkedThumbColor = GlassSuccess, checkedTrackColor = GlassSuccess.copy(alpha=0.5f)))
+                                Switch(checked = notifyMorningDhikr, onCheckedChange = { notifyMorningDhikr = it; prefs.edit().putBoolean("notify_morning_dhikr", it).apply(); com.moalmaz.ibkar.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, colors = SwitchDefaults.colors(checkedThumbColor = GlassSuccess, checkedTrackColor = GlassSuccess.copy(alpha=0.5f)))
                             }
                             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(if(isArabic) "أذكار المساء" else "Evening Dhikr", color = GlassWhite)
-                                Switch(checked = notifyEveningDhikr, onCheckedChange = { notifyEveningDhikr = it; prefs.edit().putBoolean("notify_evening_dhikr", it).apply(); com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, colors = SwitchDefaults.colors(checkedThumbColor = GlassSuccess, checkedTrackColor = GlassSuccess.copy(alpha=0.5f)))
+                                Switch(checked = notifyEveningDhikr, onCheckedChange = { notifyEveningDhikr = it; prefs.edit().putBoolean("notify_evening_dhikr", it).apply(); com.moalmaz.ibkar.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, colors = SwitchDefaults.colors(checkedThumbColor = GlassSuccess, checkedTrackColor = GlassSuccess.copy(alpha=0.5f)))
                             }
                             HorizontalDivider(color = GlassPanelBorder)
                             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(if (isArabic) "إِبْكَـار - صُنع بكل حب بواسطة مصطفى الماظ" else "Ibkar - Made with love by Mostafa Almaz", style = MaterialTheme.typography.labelSmall.copy(color = GlassAccentLight, fontWeight = FontWeight.Bold))
+                                Text(if (isArabic) "إِبْكَـار - صُنع بكل حب بواسطة مصطفى الماظ" else "Ibkar - Made with love by Mostafa Almaz", style = MaterialTheme.typography.labelSmall.copy(color = GlassAccentLight, fontWeight = FontWeight.Bold), textAlign = TextAlign.Center)
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Button(onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ibkar.vercel.app"))) } catch (e: Exception) {} }, colors = ButtonDefaults.buttonColors(containerColor = GlassAccent.copy(alpha = 0.2f))) { Text(if (isArabic) "الموقع" else "Web", color = GlassAccent) }
                                     Button(onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.facebook.com/ibkar.application"))) } catch (e: Exception) {} }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2).copy(alpha = 0.2f))) { Text("Facebook", color = Color(0xFF8A93FC)) }
