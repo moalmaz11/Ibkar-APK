@@ -1,14 +1,19 @@
-package com.moalmaz.ibkar
+package com.example
 
 import android.Manifest
+import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
+import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -44,18 +49,106 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.moalmaz.ibkar.data.DailyRecord
-import com.moalmaz.ibkar.data.DateHelper
-import com.moalmaz.ibkar.data.WorshipDatabase
-import com.moalmaz.ibkar.notification.PrayerNotificationManager
-import com.moalmaz.ibkar.notification.PrayerTimeCalculator
-import com.moalmaz.ibkar.ui.WorshipViewModel
-import com.moalmaz.ibkar.ui.theme.MyApplicationTheme
+import com.example.data.DailyRecord
+import com.example.data.DateHelper
+import com.example.data.WorshipDatabase
+import com.example.notification.PrayerNotificationManager
+import com.example.notification.PrayerTimeCalculator
+import com.example.ui.WorshipViewModel
+import com.example.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import kotlin.random.Random
+
+// ==========================================
+// 1. قاعدة بيانات الموقع
+// ==========================================
+data class CityLocation(val nameAr: String, val nameEn: String, val lat: Float, val lng: Float)
+val egyptCities = listOf(
+    CityLocation("القاهرة", "Cairo", 30.0444f, 31.2357f), CityLocation("الجيزة", "Giza", 30.0131f, 31.2089f),
+    CityLocation("الإسكندرية", "Alexandria", 31.2001f, 29.9187f), CityLocation("القليوبية", "Qalyubia", 30.4667f, 31.1833f),
+    CityLocation("البحيرة", "Beheira", 31.0333f, 30.4667f), CityLocation("مطروح", "Matrouh", 31.3525f, 27.2373f),
+    CityLocation("الغربية", "Gharbia", 30.7865f, 31.0004f), CityLocation("المنوفية", "Monufia", 30.5522f, 31.0090f),
+    CityLocation("كفر الشيخ", "Kafr El Sheikh", 31.1107f, 30.9388f), CityLocation("الدقهلية", "Dakahlia", 31.0364f, 31.3801f),
+    CityLocation("الشرقية", "Sharqia", 30.5877f, 31.5020f), CityLocation("دمياط", "Damietta", 31.4165f, 31.8133f),
+    CityLocation("بورسعيد", "Port Said", 31.2565f, 32.2841f), CityLocation("الإسماعيلية", "Ismailia", 30.6043f, 32.2723f),
+    CityLocation("السويس", "Suez", 29.9668f, 32.5498f), CityLocation("شمال سيناء", "North Sinai", 31.1316f, 33.7984f),
+    CityLocation("جنوب سيناء", "South Sinai", 28.2364f, 33.6254f), CityLocation("البحر الأحمر", "Red Sea", 27.2579f, 33.8116f),
+    CityLocation("الفيوم", "Faiyum", 29.3084f, 30.8428f), CityLocation("بني سويف", "Beni Suef", 29.0661f, 31.0994f),
+    CityLocation("المنيا", "Minya", 28.0871f, 30.7618f), CityLocation("أسيوط", "Asyut", 27.1810f, 31.1837f),
+    CityLocation("سوهاج", "Sohag", 26.5570f, 31.6948f), CityLocation("قنا", "Qena", 26.1615f, 32.7181f),
+    CityLocation("الأقصر", "Luxor", 25.6872f, 32.6396f), CityLocation("أسوان", "Aswan", 24.0889f, 32.8998f)
+)
+
+fun getNearestCity(lat: Float, lng: Float): CityLocation = egyptCities.minByOrNull { city ->
+    val dLat = city.lat - lat; val dLng = city.lng - lng; (dLat * dLat) + (dLng * dLng)
+} ?: egyptCities[0]
+
+fun updateLocationOffline(context: Context, onResult: (Boolean, String, Float, Float) -> Unit) {
+    val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    try {
+        val isGps = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+        val isNet = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+        if (!isGps && !isNet) { onResult(false, "الرجاء تفعيل GPS", 0f, 0f); return }
+        val loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER) ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+        if (loc != null) onResult(true, "تم", loc.latitude.toFloat(), loc.longitude.toFloat()) else onResult(false, "تعذر التحديد", 0f, 0f)
+    } catch (e: SecurityException) { onResult(false, "مرفوض", 0f, 0f) }
+}
+
+// ==========================================
+// 2. قاعدة بيانات الأذكار كاملة
+// ==========================================
+data class StepDhikr(val text: String, val count: Int, val benefit: String = "", val translation: String = "")
+
+val morningAdhkarList = listOf(
+    StepDhikr("أَعُوذُ بِاللهِ مِنْ الشَّيْطَانِ الرَّجِيمِ\nاللّهُ لاَ إِلَـهَ إِلاَّ هُوَ الْحَيُّ الْقَيُّومُ...", 1, "أجير من الجن حتى يمسي", "Ayat al-Kursi: Allah! There is no deity except Him, the Ever-Living..."),
+    StepDhikr("بِسْمِ اللهِ الرَّحْمنِ الرَّحِيم\nقُلْ هُوَ ٱللَّهُ أَحَدٌ، ٱللَّهُ ٱلصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُۥ كُفُوًا أَحَدٌ.", 3, "تكفيه من كل شيء", "Surah Al-Ikhlas: Say, He is Allah, [who is] One..."),
+    StepDhikr("بِسْمِ اللهِ الرَّحْمنِ الرَّحِيم\nقُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ، مِن شَرِّ مَا خَلَقَ...", 3, "تكفيه من كل شيء", "Surah Al-Falaq: Say, I seek refuge in the Lord of daybreak..."),
+    StepDhikr("بِسْمِ اللهِ الرَّحْمنِ الرَّحِيم\nقُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ، مَلِكِ ٱلنَّاسِ...", 3, "تكفيه من كل شيء", "Surah An-Nas: Say, I seek refuge in the Lord of mankind..."),
+    StepDhikr("أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لا إِلَهَ إِلا اللَّهُ وَحْدَهُ لا شَرِيكَ لَهُ...", 1, "سؤال خير اليوم", "We have reached the morning and at this very time unto Allah belongs all sovereignty..."),
+    StepDhikr("اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ، خَلَقْتَنـي وَأَنا عَبْـدُك...", 1, "سيد الاستغفار", "O Allah, You are my Lord, none has the right to be worshipped except You..."),
+    StepDhikr("رَضِيتُ بِاللَّهِ رَبّاً، وَبِالْإِسْلَامِ دِيناً، وَبِمُحَمَّدٍ صلى الله عليه وسلم نَبِيّاً.", 3, "كان حقاً على الله أن يرضيه", "I am pleased with Allah as my Lord, with Islam as my religion..."),
+    StepDhikr("بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.", 3, "لم يضره شيء", "In the Name of Allah, with Whose Name nothing can cause harm..."),
+    StepDhikr("حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ.", 7, "كفاه الله ما أهمه", "Allah is sufficient for me. There is none worthy of worship but Him..."),
+    StepDhikr("سُبْحَانَ اللَّهِ وَبِحَمْدِهِ.", 100, "حُطّت خطاياه وإن كانت مثل زبد البحر", "Glory is to Allah and praise is to Him.")
+)
+
+val eveningAdhkarList = listOf(
+    StepDhikr("أَعُوذُ بِاللهِ مِنْ الشَّيْطَانِ الرَّجِيمِ\nاللّهُ لاَ إِلَـهَ إِلاَّ هُوَ الْحَيُّ الْقَيُّومُ...", 1, "أجير من الجن حتى يصبح", "Ayat al-Kursi: Allah! There is no deity except Him, the Ever-Living..."),
+    StepDhikr("بِسْمِ اللهِ الرَّحْمنِ الرَّحِيم\nقُلْ هُوَ ٱللَّهُ أَحَدٌ، ٱللَّهُ ٱلصَّمَدُ...", 3, "تكفيه من كل شيء", "Surah Al-Ikhlas: Say, He is Allah, [who is] One..."),
+    StepDhikr("بِسْمِ اللهِ الرَّحْمنِ الرَّحِيم\nقُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ...", 3, "تكفيه من كل شيء", "Surah Al-Falaq: Say, I seek refuge in the Lord of daybreak..."),
+    StepDhikr("بِسْمِ اللهِ الرَّحْمنِ الرَّحِيم\nقُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ...", 3, "تكفيه من كل شيء", "Surah An-Nas: Say, I seek refuge in the Lord of mankind..."),
+    StepDhikr("أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لا إِلَهَ إِلا اللَّهُ وَحْدَهُ لا شَرِيكَ لَهُ...", 1, "سؤال خير الليلة", "We have reached the evening and at this very time unto Allah belongs all sovereignty..."),
+    StepDhikr("اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ، خَلَقْتَنـي وَأَنا عَبْـدُك...", 1, "سيد الاستغفار", "O Allah, You are my Lord, none has the right to be worshipped except You..."),
+    StepDhikr("أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.", 3, "لم يضره شيء في تلك الليلة", "I seek refuge in the Perfect Words of Allah from the evil of what He has created."),
+    StepDhikr("رَضِيتُ بِاللَّهِ رَبّاً، وَبِالْإِسْلَامِ دِيناً، وَبِمُحَمَّدٍ صلى الله عليه وسلم نَبِيّاً.", 3, "كان حقاً على الله أن يرضيه", "I am pleased with Allah as my Lord, with Islam as my religion..."),
+    StepDhikr("بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ.", 3, "لم يضره شيء", "In the Name of Allah, with Whose Name nothing can cause harm..."),
+    StepDhikr("سُبْحَانَ اللَّهِ وَبِحَمْدِهِ.", 100, "حُطّت خطاياه وإن كانت مثل زبد البحر", "Glory is to Allah and praise is to Him.")
+)
+
+val hisnAlMuslimData = mapOf(
+    "sleep" to listOf(StepDhikr("بِاسْمِكَ رَبِّـي وَضَعْـتُ جَنْـبي، وَبِكَ أَرْفَعُـه...", 1, "الحفظ أثناء النوم", "In Your name my Lord, I lie down..."), StepDhikr("اللَّهُمَّ إِنَّكَ خَلَقْتَ نَفْسِي وَأَنْتَ تَوَفَّاهَا...", 1, "تسليم الروح لله", "O Allah, You created my soul...")),
+    "wakeup" to listOf(StepDhikr("الحَمْـدُ لِلّهِ الّذي أَحْـيانا بَعْـدَ ما أَماتَـنا وَإليه النُّـشور.", 1, "شكر الله", "All praise is to Allah who gave us life..."), StepDhikr("لا إلهَ إلاّ اللّهُ وَحْـدَهُ لا شَـريكَ له...", 1, "توحيد خالص", "None has the right to be worshipped except Allah...")),
+    "food" to listOf(StepDhikr("بِسْمِ اللَّهِ.", 1, "عند البدء", "In the name of Allah."), StepDhikr("الْحَمْدُ لِلَّهِ الَّذِي أَطْعَمَنِي هَذَا وَرَزَقَنِيهِ مِنْ غَيْرِ حَوْلٍ مِنِّي وَلَا قُوَّةٍ.", 1, "عند الانتهاء", "Praise be to Allah who fed me this...")),
+    "travel" to listOf(StepDhikr("سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ...", 1, "دعاء الركوب", "Glory to Him who has subjected this to us..."), StepDhikr("اللَّهُمَّ إِنَّا نَسْأَلُكَ فِي سَفَرِنَا هَذَا الْبِرَّ وَالتَّقْوَى...", 1, "دعاء السفر", "O Allah, we ask You on this journey for righteousness...")),
+    "home" to listOf(StepDhikr("بِسْـمِ اللهِ وَلَجْنـا، وَبِسْـمِ اللهِ خَـرَجْنـا...", 1, "عند الدخول", "In the name of Allah we enter..."), StepDhikr("بِسْمِ اللَّهِ، تَوَكَّلْتُ عَلَى اللَّهِ، وَلَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ.", 1, "عند الخروج", "In the name of Allah, I place my trust in Allah...")),
+    "mosque" to listOf(StepDhikr("اللَّهُمَّ افْتَحْ لِي أَبْوَابَ رَحْمَتِكَ.", 1, "عند الدخول", "O Allah, open the doors of Your mercy for me."), StepDhikr("اللَّهُمَّ إِنِّي أَسْأَلُكَ مِنْ فَضْلِكَ.", 1, "عند الخروج", "O Allah, I ask You from Your bounty.")),
+    "toilet" to listOf(StepDhikr("بِسْمِ الله، اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْخُبْثِ وَالْخَبَائِثِ.", 1, "عند الدخول", "O Allah I seek refuge in You from evil..."), StepDhikr("غُفْرَانَكَ.", 1, "عند الخروج", "I ask You for forgiveness.")),
+    "rain" to listOf(StepDhikr("اللَّهُمَّ صَيِّباً نَافِعاً.", 1, "عند نزول المطر", "O Allah, (bring) beneficial rain cloud."), StepDhikr("مُطِرْنَا بِفَضْلِ اللَّهِ وَرَحْمَتِهِ.", 1, "بعد نزول المطر", "It has rained by the bounty of Allah and His mercy."))
+)
+
+// ==========================================
+// 3. الألوان والتصميم (UI)
+// ==========================================
+val GlassBgGradient = listOf(Color(0xFF0F172A), Color(0xFF1E1B4B))
+val GlassAccent = Color(0xFF818CF8)
+val GlassAccentLight = Color(0xFFA5B4FC)
+val GlassWhite = Color.White
+val GlassPanelBg = Color.White.copy(alpha = 0.05f)
+val GlassPanelBorder = Color.White.copy(alpha = 0.12f)
+val GlassSuccess = Color(0xFF10B981)
 
 class MainActivity : ComponentActivity() {
     private var initialDhikrTypeState = mutableStateOf<String?>(null)
@@ -173,7 +266,7 @@ fun MainAppNavigation(isArabic: Boolean, onToggleLanguage: () -> Unit, viewModel
                         colors = NavigationBarItemDefaults.colors(selectedIconColor = GlassAccent, selectedTextColor = GlassAccent, unselectedIconColor = GlassAccentLight, unselectedTextColor = GlassAccentLight, indicatorColor = GlassPanelBg)
                     )
                     NavigationBarItem(
-                        icon = { Icon(if (currentRoute == AppRoute.Stats) Icons.Filled.MailOutline else Icons.Outlined.MailOutline, null) },
+                        icon = { Icon(if (currentRoute == AppRoute.Stats) Icons.Filled.List else Icons.Outlined.List, null) },
                         label = { Text(if (isArabic) "السجل" else "Stats") },
                         selected = currentRoute == AppRoute.Stats,
                         onClick = { currentRoute = AppRoute.Stats },
@@ -262,10 +355,6 @@ fun MainAppNavigation(isArabic: Boolean, onToggleLanguage: () -> Unit, viewModel
     }
 }
 
-// ------------------------------------------------------------------------
-// UI Components
-// ------------------------------------------------------------------------
-
 @Composable
 fun GlassCard(modifier: Modifier = Modifier, padding: PaddingValues = PaddingValues(20.dp), onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     var mod = modifier.clip(RoundedCornerShape(24.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(24.dp))
@@ -289,7 +378,7 @@ fun TopStreakBar(streak: Int, cityName: String, isArabic: Boolean, onSettingsCli
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(20.dp)).padding(horizontal = 14.dp, vertical = 8.dp)) {
-            Icon(Icons.Filled.LocalFireDepartment, null, tint = Color(0xFFF59E0B), modifier = Modifier.size(20.dp))
+            Icon(Icons.Filled.Star, null, tint = Color(0xFFF59E0B), modifier = Modifier.size(20.dp))
             Text(text = if (isArabic) "تتابع: $streak" else "Streak: $streak", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
         }
     }
@@ -312,7 +401,7 @@ fun HomeScreen(
                             Text(text = "/100", style = MaterialTheme.typography.bodyLarge.copy(color = GlassAccentLight, fontWeight = FontWeight.Bold, fontSize = 18.sp), modifier = Modifier.padding(bottom = 6.dp))
                         }
                     }
-                    Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = GlassSuccess, modifier = Modifier.size(36.dp))
+                    Icon(Icons.Outlined.CheckCircle, null, tint = GlassSuccess, modifier = Modifier.size(36.dp))
                 }
                 val dayProgress = totalDoneItems.toFloat() / 8f
                 Box(modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(10.dp)).background(GlassWhite.copy(alpha = 0.1f))) {
@@ -320,47 +409,44 @@ fun HomeScreen(
                 }
             }
         }
-
         item {
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(modifier = Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(20.dp)).clickable { onOpenWird() }.padding(12.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Outlined.MenuBook, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
+                        Icon(Icons.Outlined.List, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
                         Text(if (isArabic) "الورد" else "Wird", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
                     }
                 }
                 Box(modifier = Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(20.dp)).clickable { onOpenTasbeeh() }.padding(12.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Outlined.TouchApp, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
+                        Icon(Icons.Outlined.Add, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
                         Text(if (isArabic) "التسبيح" else "Tasbeeh", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
                     }
                 }
                 Box(modifier = Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(20.dp)).clickable { onOpenHisn() }.padding(12.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Outlined.Shield, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
+                        Icon(Icons.Outlined.Lock, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
                         Text(if (isArabic) "حصن" else "Hisn", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
                     }
                 }
             }
         }
-
         item {
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 GlassCard(modifier = Modifier.weight(1f), padding = PaddingValues(16.dp), onClick = { onOpenDhikr("morning") }) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(text = if (isArabic) "أذكار الصباح" else "Morning", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
-                        if (record.morningDhikrDone) Icon(Icons.Filled.CheckCircle, null, tint = GlassSuccess) else Icon(Icons.Outlined.WbSunny, null, tint = GlassAccentLight)
+                        if (record.morningDhikrDone) Icon(Icons.Filled.CheckCircle, null, tint = GlassSuccess) else Icon(Icons.Outlined.Done, null, tint = GlassAccentLight)
                     }
                 }
                 GlassCard(modifier = Modifier.weight(1f), padding = PaddingValues(16.dp), onClick = { onOpenDhikr("evening") }) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(text = if (isArabic) "أذكار المساء" else "Evening", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
-                        if (record.eveningDhikrDone) Icon(Icons.Filled.CheckCircle, null, tint = GlassSuccess) else Icon(Icons.Outlined.NightsStay, null, tint = GlassAccentLight)
+                        if (record.eveningDhikrDone) Icon(Icons.Filled.CheckCircle, null, tint = GlassSuccess) else Icon(Icons.Outlined.Done, null, tint = GlassAccentLight)
                     }
                 }
             }
         }
-
         item {
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(text = if (isArabic) "الصلوات المفروضة" else "Obligatory Prayers", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(start = 4.dp))
@@ -385,11 +471,10 @@ fun AdvancedStatsScreen(isArabic: Boolean, history: List<DailyRecord>) {
 
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 20.dp, bottom = 100.dp, start = 20.dp, end = 20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item { Text(text = if (isArabic) "سجل الإنجازات" else "Achievement Log", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = GlassWhite)) }
-        
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 GlassCard(modifier = Modifier.weight(1f), padding = PaddingValues(16.dp)) {
-                    Icon(Icons.Outlined.EmojiEvents, null, tint = Color(0xFFF59E0B), modifier = Modifier.size(32.dp).padding(bottom = 8.dp))
+                    Icon(Icons.Outlined.Star, null, tint = Color(0xFFF59E0B), modifier = Modifier.size(32.dp).padding(bottom = 8.dp))
                     Text(if (isArabic) "النقاط الإجمالية" else "Total Points", style = MaterialTheme.typography.labelMedium.copy(color = GlassAccentLight))
                     Text("$totalScore", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = GlassWhite))
                 }
@@ -400,10 +485,7 @@ fun AdvancedStatsScreen(isArabic: Boolean, history: List<DailyRecord>) {
                 }
             }
         }
-
-        item {
-            Text(text = if (isArabic) "أداء الأيام السابقة" else "Previous Days", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(top = 10.dp))
-        }
+        item { Text(text = if (isArabic) "أداء الأيام السابقة" else "Previous Days", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(top = 10.dp)) }
 
         if (historyItems.isEmpty()) {
             item { Text(if (isArabic) "لا توجد بيانات بعد." else "No records yet.", color = GlassAccentLight, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
@@ -421,15 +503,11 @@ fun AdvancedStatsScreen(isArabic: Boolean, history: List<DailyRecord>) {
                 if (!day.eveningDhikrDone) missed.add(if (isArabic) "المساء" else "Evening")
                 
                 val pts = day.calculatePoints()
-
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(16.dp)).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(text = day.date, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = GlassWhite))
-                        if (missed.isEmpty()) {
-                            Text(text = if (isArabic) "علامة كاملة، أحسنت!" else "Perfect score, well done!", style = MaterialTheme.typography.labelSmall.copy(color = GlassSuccess, fontWeight = FontWeight.Bold))
-                        } else {
-                            Text(text = (if (isArabic) "فاتك: " else "Missed: ") + missed.joinToString("، "), style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFFF87171)))
-                        }
+                        if (missed.isEmpty()) { Text(text = if (isArabic) "علامة كاملة، أحسنت!" else "Perfect score!", style = MaterialTheme.typography.labelSmall.copy(color = GlassSuccess, fontWeight = FontWeight.Bold)) } 
+                        else { Text(text = (if (isArabic) "فاتك: " else "Missed: ") + missed.joinToString("، "), style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFFF87171))) }
                     }
                     Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(if (pts == 100) GlassSuccess.copy(alpha=0.2f) else GlassAccent.copy(alpha=0.2f)).border(2.dp, if (pts == 100) GlassSuccess else GlassAccent, CircleShape), contentAlignment = Alignment.Center) {
                         Text("$pts", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, color = GlassWhite))
@@ -481,7 +559,6 @@ fun WirdGlassDialog(isArabic: Boolean, pages: Int, onIncrease: () -> Unit, onDec
 @Composable
 fun FullScreenHisn(isArabic: Boolean, onBack: () -> Unit) {
     var activeCategory by remember { mutableStateOf<String?>(null) }
-    
     if (activeCategory == null) {
         Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
