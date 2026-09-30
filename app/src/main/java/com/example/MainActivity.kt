@@ -468,6 +468,23 @@ fun MainAppContent(
 
     if (showStatsDialog) { StatsScreen(isArabic = isArabic, onDismiss = { showStatsDialog = false }) }
     if (activeHisnCategory != null) { HisnAlMuslimDialog(category = activeHisnCategory!!, isArabic = isArabic, onDismiss = { activeHisnCategory = null }) }
+    if (showManualLocationDialog) {
+        AlertDialog(
+            onDismissRequest = { showManualLocationDialog = false },
+            title = { Text(text = if (isArabic) "اختر محافظتك" else "Select Governorate", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
+            text = {
+                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
+                    items(egyptCities) { city ->
+                        TextButton(onClick = { userLat = city.lat; userLng = city.lng; cityNameState = if (isArabic) city.nameAr else city.nameEn; notificationSettingsPrefs.edit().putFloat("user_latitude", city.lat).putFloat("user_longitude", city.lng).putString("user_city_name_ar", city.nameAr).putString("user_city_name_en", city.nameEn).apply(); showManualLocationDialog = false; com.example.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context); Toast.makeText(context, if (isArabic) "تم التحديث" else "Updated", Toast.LENGTH_SHORT).show() }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(12.dp)) {
+                            Text(text = if (isArabic) city.nameAr else city.nameEn, textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showManualLocationDialog = false }) { Text(if (isArabic) "إلغاء" else "Cancel") } }
+        )
+    }
 
     if (showSettingsDialog) {
         AlertDialog(
@@ -518,17 +535,11 @@ fun MainAppContent(
         val mMin = notificationSettingsPrefs.getInt("morning_dhikr_minute", 0)
         val eHour = notificationSettingsPrefs.getInt("evening_dhikr_hour", 17)
         val eMin = notificationSettingsPrefs.getInt("evening_dhikr_minute", 0)
-        
         var currentMHour by remember { mutableStateOf(mHour) }
         var currentMMin by remember { mutableStateOf(mMin) }
         var currentEHour by remember { mutableStateOf(eHour) }
         var currentEMin by remember { mutableStateOf(eMin) }
-
-        val formatTime = { h: Int, m: Int ->
-            val amPm = if (h >= 12) (if (isArabic) "م" else "PM") else (if (isArabic) "ص" else "AM")
-            val h12 = if (h % 12 == 0) 12 else h % 12
-            String.format("%02d:%02d %s", h12, m, amPm)
-        }
+        val formatTime = { h: Int, m: Int -> val amPm = if (h >= 12) (if (isArabic) "م" else "PM") else (if (isArabic) "ص" else "AM"); val h12 = if (h % 12 == 0) 12 else h % 12; String.format("%02d:%02d %s", h12, m, amPm) }
 
         AlertDialog(
             onDismissRequest = { showNotificationDetailsDialog = false },
@@ -561,8 +572,7 @@ fun MainAppContent(
 
     if (activeDhikrTypeForReading != null) {
         DhikrReadingFlow(
-            type = activeDhikrTypeForReading!!, isArabic = isArabic,
-            onDismiss = { activeDhikrTypeForReading = null },
+            type = activeDhikrTypeForReading!!, isArabic = isArabic, onDismiss = { activeDhikrTypeForReading = null },
             onComplete = {
                 if (isTodaySelected) {
                     val isDoneCurrently = if (activeDhikrTypeForReading == "morning") activeRecord.morningDhikrDone else activeRecord.eveningDhikrDone
@@ -593,22 +603,53 @@ fun MainAppContent(
 // ==========================================
 // 3. المكونات المساعدة للزجاج العصري
 // ==========================================
+data class UpcomingPrayerInfo(val tag: String, val name: String, val timeStr: String, val diffMinutes: Int, val diffSeconds: Int)
+
+fun getUpcomingPrayer(todayTimes: Map<String, Pair<Int, Int>>, latitude: Double, longitude: Double, isArabic: Boolean): UpcomingPrayerInfo? {
+    val now = com.example.notification.PrayerTimeCalculator.getLocalCalendar(latitude, longitude)
+    val currentMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+    val currentSeconds = now.get(Calendar.SECOND)
+    val currentSecsFromMidnight = currentMinutes * 60 + currentSeconds
+    val prayerList = if (isArabic) listOf("fajr" to "الفجر", "dhuhr" to "الظهر", "asr" to "العصر", "maghrib" to "المغرب", "isha" to "العشاء") else listOf("fajr" to "Fajr", "dhuhr" to "Dhuhr", "asr" to "Asr", "maghrib" to "Maghrib", "isha" to "Isha")
+    for (p in prayerList) {
+        val t = todayTimes[p.first]
+        if (t != null) {
+            val pMinutes = t.first * 60 + t.second
+            val prayerSecsFromMidnight = pMinutes * 60
+            if (prayerSecsFromMidnight > currentSecsFromMidnight) {
+                val remainingSeconds = prayerSecsFromMidnight - currentSecsFromMidnight
+                val diffMin = (remainingSeconds / 60).toInt()
+                val diffSec = (remainingSeconds % 60).toInt()
+                val h12 = if (t.first % 12 == 0) 12 else t.first % 12
+                val amPm = if (t.first >= 12) { if (isArabic) "م" else "PM" } else { if (isArabic) "ص" else "AM" }
+                return UpcomingPrayerInfo(p.first, p.second, "%d:%02d %s".format(h12, t.second, amPm), diffMin, diffSec)
+            }
+        }
+    }
+    val t = todayTimes["fajr"]
+    if (t != null) {
+        val pMinutes = t.first * 60 + t.second
+        val prayerSecsFromMidnight = (pMinutes + 24 * 60) * 60
+        val remainingSeconds = prayerSecsFromMidnight - currentSecsFromMidnight
+        val diffMin = (remainingSeconds / 60).toInt()
+        val diffSec = (remainingSeconds % 60).toInt()
+        val h12 = if (t.first % 12 == 0) 12 else t.first % 12
+        val amPm = if (isArabic) "ص" else "AM"
+        return UpcomingPrayerInfo("fajr", if (isArabic) "فجر الغد" else "Tomorrow's Fajr", "%d:%02d %s".format(h12, t.second, amPm), diffMin, diffSec)
+    }
+    return null
+}
 
 @Composable
 fun PrayerItemRow(name: String, isDone: Boolean, timeText: String, onToggle: () -> Unit) {
     val bgColor = if (isDone) GlassAccent.copy(alpha = 0.2f) else GlassPanelBg
     val borderColor = if (isDone) GlassAccent.copy(alpha = 0.5f) else GlassPanelBorder
     val textColor = if (isDone) GlassWhite else GlassWhite.copy(alpha = 0.8f)
-    
     Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(bgColor).border(1.dp, borderColor, RoundedCornerShape(16.dp)).clickable { onToggle() }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(text = timeText, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = GlassAccentLight), modifier = Modifier.width(65.dp))
         Text(text = name, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = textColor), modifier = Modifier.weight(1f))
-        
-        if (isDone) {
-            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = GlassAccent, modifier = Modifier.size(24.dp))
-        } else {
-            Canvas(modifier = Modifier.size(22.dp)) { drawCircle(color = GlassWhite.copy(alpha = 0.3f), style = Stroke(width = 4f)) }
-        }
+        if (isDone) { Icon(Icons.Default.CheckCircle, contentDescription = null, tint = GlassAccent, modifier = Modifier.size(24.dp)) } 
+        else { Canvas(modifier = Modifier.size(22.dp)) { drawCircle(color = GlassWhite.copy(alpha = 0.3f), style = Stroke(width = 4f)) } }
     }
 }
 
@@ -618,7 +659,6 @@ fun NextPrayerCountdownCard(upcoming: UpcomingPrayerInfo, isArabic: Boolean) {
     val m = upcoming.diffMinutes % 60
     val s = upcoming.diffSeconds
     val countdownFormatted = if (h > 0) "%02d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
-
     GlassCard {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
@@ -863,5 +903,3 @@ fun HisnAlMuslimDialog(category: String, isArabic: Boolean, onDismiss: () -> Uni
         confirmButton = { Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(if (isArabic) "إغلاق" else "Close") } }
     )
 }
-
-data class Particle(var x: Float, var y: Float, var speedY: Float, var speedX: Float, val color: Color, val isBalloon: Boolean, val size: Float)
