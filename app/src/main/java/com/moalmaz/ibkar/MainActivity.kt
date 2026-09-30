@@ -14,7 +14,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -154,14 +153,14 @@ fun MainAppNavigation(isArabic: Boolean, onToggleLanguage: () -> Unit, viewModel
             if (currentRoute == AppRoute.Home || currentRoute == AppRoute.Stats) {
                 NavigationBar(containerColor = Color.Transparent, contentColor = GlassWhite, tonalElevation = 0.dp) {
                     NavigationBarItem(
-                        icon = { Icon(Icons.Outlined.Home, null, modifier = Modifier.size(24.dp)) },
+                        icon = { Icon(Icons.Filled.Home, null, modifier = Modifier.size(24.dp)) },
                         label = { Text(if (isArabic) "الرئيسية" else "Home", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                         selected = currentRoute == AppRoute.Home,
                         onClick = { currentRoute = AppRoute.Home },
                         colors = NavigationBarItemDefaults.colors(selectedIconColor = GlassAccent, selectedTextColor = GlassAccent, unselectedIconColor = GlassWhite.copy(alpha=0.4f), unselectedTextColor = GlassWhite.copy(alpha=0.4f), indicatorColor = Color.Transparent)
                     )
                     NavigationBarItem(
-                        icon = { Icon(Icons.Outlined.List, null, modifier = Modifier.size(24.dp)) },
+                        icon = { Icon(Icons.Filled.List, null, modifier = Modifier.size(24.dp)) },
                         label = { Text(if (isArabic) "السجل" else "Stats", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
                         selected = currentRoute == AppRoute.Stats,
                         onClick = { currentRoute = AppRoute.Stats },
@@ -239,11 +238,10 @@ fun HomeScreen(
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)) {
         
-        // 1. بطاقة إجمالي النقاط (مطابقة للصورة تماماً مع أيقونة الشارة)
         item {
             GlassCard(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
                 Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.WorkspacePremium, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
+                    Icon(Icons.Filled.Star, null, tint = GlassAccentLight, modifier = Modifier.size(32.dp))
                     Column(horizontalAlignment = Alignment.End) {
                         Text(text = if (isArabic) "إجمالي النقاط" else "Total Points", style = MaterialTheme.typography.labelMedium.copy(color = GlassAccentLight, fontSize = 12.sp))
                         Row(verticalAlignment = Alignment.Bottom) {
@@ -259,34 +257,29 @@ fun HomeScreen(
             }
         }
 
-        // 2. أزرار التنقل السريع (الأذكار، التسبيح، الورد) بنفس الأبعاد والترتيب
         item {
             Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                // زر الأذكار مع أيقونة الهلال
                 Box(modifier = Modifier.weight(1f).height(85.dp).clip(RoundedCornerShape(18.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(18.dp)).clickable { onOpenDhikr("morning") }.padding(8.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Outlined.NightsStay, null, tint = GlassAccentLight, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Filled.CheckCircle, null, tint = GlassAccentLight, modifier = Modifier.size(24.dp))
                         Text(if (isArabic) "الأذكار" else "Adhkar", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite, fontSize = 13.sp))
                     }
                 }
-                // زر التسبيح مع أيقونة المسبحة/اللمس
                 Box(modifier = Modifier.weight(1f).height(85.dp).clip(RoundedCornerShape(18.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(18.dp)).clickable { onOpenTasbeeh() }.padding(8.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Outlined.TouchApp, null, tint = GlassAccentLight, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Filled.Refresh, null, tint = GlassAccentLight, modifier = Modifier.size(24.dp))
                         Text(if (isArabic) "التسبيح" else "Tasbeeh", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite, fontSize = 13.sp))
                     }
                 }
-                // زر الورد مع أيقونة الكتاب المفتوح
                 Box(modifier = Modifier.weight(1f).height(85.dp).clip(RoundedCornerShape(18.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(18.dp)).clickable { onOpenWird() }.padding(8.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Outlined.MenuBook, null, tint = GlassAccentLight, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Filled.List, null, tint = GlassAccentLight, modifier = Modifier.size(24.dp))
                         Text(if (isArabic) "الورد" else "Wird", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = GlassWhite, fontSize = 13.sp))
                     }
                 }
             }
         }
 
-        // 3. الصلوات المفروضة
         item {
             Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = if (isArabic) "الصلوات المفروضة" else "Obligatory Prayers", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = GlassWhite), modifier = Modifier.padding(bottom = 2.dp))
