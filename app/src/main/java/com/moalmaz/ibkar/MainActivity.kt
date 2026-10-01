@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -95,6 +96,14 @@ data class StepDhikr(val text: String, val count: Int, val benefit: String = "",
 val morningAdhkarList = listOf(StepDhikr("أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ...", 1))
 val eveningAdhkarList = listOf(StepDhikr("أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ...", 1))
 
+data class UpcomingPrayerInfo(
+    val tag: String,
+    val name: String,
+    val timeStr: String,
+    val diffMinutes: Int,
+    val diffSeconds: Int
+)
+
 fun getNearestCity(lat: Float, lng: Float): CityLocation {
     return egyptCities.minByOrNull { city ->
         val dLat = city.lat - lat
@@ -123,6 +132,45 @@ fun updateLocationOffline(context: Context, onResult: (Boolean, String, Float, F
     } catch (e: SecurityException) {
         onResult(false, "صلاحية الموقع غير ممنوحة", 0f, 0f)
     }
+}
+
+fun getUpcomingPrayer(todayTimes: Map<String, Pair<Int, Int>>, latitude: Double, longitude: Double, isArabic: Boolean): UpcomingPrayerInfo? {
+    val now = PrayerTimeCalculator.getLocalCalendar(latitude, longitude)
+    val currentMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+    val currentSeconds = now.get(Calendar.SECOND)
+    val currentSecsFromMidnight = currentMinutes * 60 + currentSeconds
+
+    val prayerList = if (isArabic) listOf("fajr" to "الفجر", "dhuhr" to "الظهر", "asr" to "العصر", "maghrib" to "المغرب", "isha" to "العشاء")
+    else listOf("fajr" to "Fajr", "dhuhr" to "Dhuhr", "asr" to "Asr", "maghrib" to "Maghrib", "isha" to "Isha")
+
+    for (p in prayerList) {
+        val t = todayTimes[p.first]
+        if (t != null) {
+            val pMinutes = t.first * 60 + t.second
+            val prayerSecsFromMidnight = pMinutes * 60
+            if (prayerSecsFromMidnight > currentSecsFromMidnight) {
+                val remainingSeconds = prayerSecsFromMidnight - currentSecsFromMidnight
+                val diffMin = remainingSeconds / 60
+                val diffSec = remainingSeconds % 60
+                val h12 = if (t.first % 12 == 0) 12 else t.first % 12
+                val amPm = if (t.first >= 12) { if (isArabic) "م" else "PM" } else { if (isArabic) "ص" else "AM" }
+                return UpcomingPrayerInfo(p.first, p.second, "%d:%02d %s".format(h12, t.second, amPm), diffMin, diffSec)
+            }
+        }
+    }
+
+    val t = todayTimes["fajr"]
+    if (t != null) {
+        val pMinutes = t.first * 60 + t.second
+        val prayerSecsFromMidnight = (pMinutes + 24 * 60) * 60
+        val remainingSeconds = prayerSecsFromMidnight - currentSecsFromMidnight
+        val diffMin = remainingSeconds / 60
+        val diffSec = remainingSeconds % 60
+        val h12 = if (t.first % 12 == 0) 12 else t.first % 12
+        val amPm = if (isArabic) "ص" else "AM"
+        return UpcomingPrayerInfo("fajr", if (isArabic) "فجر الغد" else "Tomorrow's Fajr", "%d:%02d %s".format(h12, t.second, amPm), diffMin, diffSec)
+    }
+    return null
 }
 
 class MainActivity : ComponentActivity() {
@@ -178,10 +226,8 @@ fun MainAppContent(
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     
-    // Fallback if selectedDate doesn't exist in viewmodel
     val selectedDate = DateHelper.getTodayDateString(context)
     val record by viewModel.currentRecord.collectAsStateWithLifecycle()
-    // Fallback if profile doesn't exist
     val totalPoints = 0
     val streak by viewModel.currentStreak.collectAsStateWithLifecycle()
 
@@ -253,7 +299,7 @@ fun MainAppContent(
     val todayStr = DateHelper.getTodayDateString(context)
     val displayDate = if (isArabic) DateHelper.getArabicDisplayDate(selectedDate) else selectedDate
     val isTodaySelected = selectedDate == todayStr
-    var upcomingPrayerInfoState by remember(todayTimes) { mutableStateOf<UpcomingPrayerInfo?>(null) }
+    var upcomingPrayerInfoState by remember { mutableStateOf<UpcomingPrayerInfo?>(null) }
 
     LaunchedEffect(todayTimes, userLat, userLng, isTodaySelected, isArabic) {
         if (isTodaySelected) {
@@ -355,18 +401,17 @@ fun MainAppContent(
 
             item {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    // viewModel.changeDate(-1) is temporarily disabled due to unresolved reference
-                    IconButton(onClick = { /* viewModel.changeDate(-1) */ }) { Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Previous Day", modifier = Modifier.scale(if (isArabic) 1f else -1f)) }
+                    IconButton(onClick = { }) { Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Previous Day", modifier = Modifier.scale(if (isArabic) 1f else -1f)) }
                     Text(text = displayDate, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                    // viewModel.changeDate(1) is temporarily disabled
-                    IconButton(onClick = { /* viewModel.changeDate(1) */ }, enabled = selectedDate < todayStr) { Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Next Day", modifier = Modifier.scale(if (isArabic) 1f else -1f)) }
+                    IconButton(onClick = { }, enabled = selectedDate < todayStr) { Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Next Day", modifier = Modifier.scale(if (isArabic) 1f else -1f)) }
                 }
             }
 
             item { MotivationHeaderCard(totalDoneItems = totalDoneItems, isQuranDone = isQuranDone, isFajrDone = activeRecord.fajrDone, isTodaySelected = isTodaySelected, darkTheme = darkTheme, isArabic = isArabic) }
 
-            if (isTodaySelected && upcomingPrayerInfoState != null) {
-                item { NextPrayerCountdownCard(upcoming = upcomingPrayerInfoState!!, darkTheme = darkTheme, isArabic = isArabic) }
+            val upcomingInfo = upcomingPrayerInfoState
+            if (isTodaySelected && upcomingInfo != null) {
+                item { NextPrayerCountdownCard(upcoming = upcomingInfo, darkTheme = darkTheme, isArabic = isArabic) }
             }
 
             item {
@@ -533,8 +578,7 @@ fun MainAppContent(
                     Row(modifier = Modifier.fillMaxWidth().clickable { showEditNameDialog = true }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Column {
                             Text(if (isArabic) "تغيير الاسم" else "Change Name", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
-                            // profile.name temporarily disabled to prevent crash
-                            Text(/* profile.name.ifEmpty { */ if (isArabic) "ضيف" else "Guest" /* } */, style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.primary))
+                            Text(if (isArabic) "ضيف" else "Guest", style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.primary))
                         }
                         Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     }
@@ -563,7 +607,7 @@ fun MainAppContent(
                             TextButton(onClick = { showMethodDropdown = true }) { Text(methods.getOrElse(methodValues.indexOf(prayerCalcMethod)) { if (isArabic) "تغيير" else "Change" }, fontSize = 12.sp, maxLines = 1) }
                             DropdownMenu(expanded = showMethodDropdown, onDismissRequest = { showMethodDropdown = false }) {
                                 methods.forEachIndexed { index, name ->
-                                    DropdownMenuItem(text = { Text(name) }, onClick = { prayerCalcMethod = methodValues[index]; notificationSettingsPrefs.edit().putInt("prayer_calc_method", methodValues[index]).apply(); com.moalmaz.ibkar.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context); showMethodDropdown = false })
+                                    DropdownMenuItem(text = { Text(name) }, onClick = { prayerCalcMethod = methodValues[index]; notificationSettingsPrefs.edit().putInt("prayer_calc_method", methodValues[index]).apply(); PrayerNotificationManager.scheduleDailyPrayerReminders(context); showMethodDropdown = false })
                                 }
                             }
                         }
@@ -602,30 +646,30 @@ fun MainAppContent(
                         Switch(checked = notifyAll, onCheckedChange = { 
                             notifyAll = it; notifyPrayers = it; notifyMorningDhikr = it; notifyEveningDhikr = it
                             notificationSettingsPrefs.edit().putBoolean("notify_all", it).putBoolean("notify_prayers", it).putBoolean("notify_morning_dhikr", it).putBoolean("notify_evening_dhikr", it).apply()
-                            com.moalmaz.ibkar.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context)
+                            PrayerNotificationManager.scheduleDailyPrayerReminders(context)
                         }, colors = SwitchDefaults.colors(checkedThumbColor = SuccessGreen, checkedTrackColor = SuccessGreen.copy(alpha=0.5f)))
                     }
                     HorizontalDivider(color = if (darkTheme) Color(0xFF1E293B) else Color(0xFFE2E8F0))
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(if (isArabic) "تنبيهات الصلوات" else "Prayer Alerts", style = MaterialTheme.typography.bodyMedium)
-                        Switch(checked = notifyPrayers, onCheckedChange = { notifyPrayers = it; notificationSettingsPrefs.edit().putBoolean("notify_prayers", it).apply(); com.moalmaz.ibkar.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, enabled = notifyAll)
+                        Switch(checked = notifyPrayers, onCheckedChange = { notifyPrayers = it; notificationSettingsPrefs.edit().putBoolean("notify_prayers", it).apply(); PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, enabled = notifyAll)
                     }
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(if (isArabic) "تذكير أذكار الصباح (بعد الفجر)" else "Morning Dhikr Reminder", style = MaterialTheme.typography.bodyMedium)
-                        Switch(checked = notifyMorningDhikr, onCheckedChange = { notifyMorningDhikr = it; notificationSettingsPrefs.edit().putBoolean("notify_morning_dhikr", it).apply(); com.moalmaz.ibkar.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, enabled = notifyAll)
+                        Switch(checked = notifyMorningDhikr, onCheckedChange = { notifyMorningDhikr = it; notificationSettingsPrefs.edit().putBoolean("notify_morning_dhikr", it).apply(); PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, enabled = notifyAll)
                     }
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(if (isArabic) "تذكير أذكار المساء (بعد العصر)" else "Evening Dhikr Reminder", style = MaterialTheme.typography.bodyMedium)
-                        Switch(checked = notifyEveningDhikr, onCheckedChange = { notifyEveningDhikr = it; notificationSettingsPrefs.edit().putBoolean("notify_evening_dhikr", it).apply(); com.moalmaz.ibkar.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, enabled = notifyAll)
+                        Switch(checked = notifyEveningDhikr, onCheckedChange = { notifyEveningDhikr = it; notificationSettingsPrefs.edit().putBoolean("notify_evening_dhikr", it).apply(); PrayerNotificationManager.scheduleDailyPrayerReminders(context) }, enabled = notifyAll)
                     }
                     HorizontalDivider(color = if (darkTheme) Color(0xFF1E293B) else Color(0xFFE2E8F0))
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(if (isArabic) "تعديل وقت الأذان (دقائق)" else "Adjust Adhan Time (Mins)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
                         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { offsetMinutesVal--; notificationSettingsPrefs.edit().putInt("prayer_offset_minutes", offsetMinutesVal).apply(); com.moalmaz.ibkar.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) }) { Icon(Icons.Default.KeyboardArrowDown, null) }
+                                IconButton(onClick = { offsetMinutesVal--; notificationSettingsPrefs.edit().putInt("prayer_offset_minutes", offsetMinutesVal).apply(); PrayerNotificationManager.scheduleDailyPrayerReminders(context) }) { Icon(Icons.Default.KeyboardArrowDown, null) }
                                 Text("$offsetMinutesVal", style = MaterialTheme.typography.titleMedium)
-                                IconButton(onClick = { offsetMinutesVal++; notificationSettingsPrefs.edit().putInt("prayer_offset_minutes", offsetMinutesVal).apply(); com.moalmaz.ibkar.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context) }) { Icon(Icons.Default.KeyboardArrowUp, null) }
+                                IconButton(onClick = { offsetMinutesVal++; notificationSettingsPrefs.edit().putInt("prayer_offset_minutes", offsetMinutesVal).apply(); PrayerNotificationManager.scheduleDailyPrayerReminders(context) }) { Icon(Icons.Default.KeyboardArrowUp, null) }
                             }
                         }
                     }
@@ -650,7 +694,7 @@ fun MainAppContent(
                                 userLng = city.lng
                                 cityNameState = if (isArabic) city.nameAr else city.nameEn
                                 notificationSettingsPrefs.edit().putFloat("user_latitude", city.lat).putFloat("user_longitude", city.lng).putString("user_city_name_ar", city.nameAr).putString("user_city_name_en", city.nameEn).apply()
-                                com.moalmaz.ibkar.notification.PrayerNotificationManager.scheduleDailyPrayerReminders(context)
+                                PrayerNotificationManager.scheduleDailyPrayerReminders(context)
                                 Toast.makeText(context, if (isArabic) "تم التحديث لـ ${city.nameAr}" else "Updated to ${city.nameEn}", Toast.LENGTH_SHORT).show()
                                 showManualLocationDialog = false
                             },
@@ -682,8 +726,7 @@ fun MainAppContent(
                 )
             },
             confirmButton = {
-                // updateUserName temporarily disabled
-                Button(onClick = { /* viewModel.updateUserName(inputName.trim()); */ showEditNameDialog = false }) { Text(if (isArabic) "حفظ" else "Save") }
+                Button(onClick = { showEditNameDialog = false }) { Text(if (isArabic) "حفظ" else "Save") }
             },
             dismissButton = {
                 TextButton(onClick = { showEditNameDialog = false }) { Text(if (isArabic) "إلغاء" else "Cancel", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)) }
@@ -745,7 +788,9 @@ fun NextPrayerCountdownCard(upcoming: UpcomingPrayerInfo, darkTheme: Boolean, is
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Column(horizontalAlignment = Alignment.Start, verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(text = if (isArabic) "الوقت المتبقي للأذان:" else "Time until Adhan:", style = MaterialTheme.typography.labelSmall.copy(color = (if (isDark) Color.White else Color.Black).copy(alpha = 0.7f), fontWeight = FontWeight.Bold))
-                    Text(text = countdownFormatted, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 24.sp, color = if (isDark) Color(0xFFFFD54F) else Color(0xFF065F46)))
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        Text(text = countdownFormatted, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 24.sp, color = if (isDark) Color(0xFFFFD54F) else Color(0xFF065F46)))
+                    }
                     Text(text = countdownLabel, style = MaterialTheme.typography.labelSmall.copy(color = (if (isDark) Color.White else Color.Black).copy(alpha = 0.45f), fontSize = 9.sp))
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -787,7 +832,11 @@ fun PrayerItemRow(name: String, description: String, isDone: Boolean, tag: Strin
                             Text(text = name, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = if (isDone) { if (isDark) Color(0xFFD1FAE5) else Color(0xFF065F46) } else MaterialTheme.colorScheme.onSurface))
                             if (isDone) Box(modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(if (isDark) Color(0xFF065F46).copy(alpha = 0.3f) else Color(0xFFD1FAE5)).padding(horizontal = 6.dp, vertical = 1.dp)) { Text(text = if (isArabic) "مؤداة" else "Done", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = if (isDark) Color(0xFF34D399) else Color(0xFF059669), fontSize = 9.sp)) }
                         }
-                        if (timeText != null) Text(text = timeText, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Black, color = if (isDone) { if (isDark) Color(0xFF34D399) else Color(0xFF059669) } else { if (isDark) Color(0xFFFFD54F) else Color(0xFF065F46) }))
+                        if (timeText != null) {
+                            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                                Text(text = timeText, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Black, color = if (isDone) { if (isDark) Color(0xFF34D399) else Color(0xFF059669) } else { if (isDark) Color(0xFFFFD54F) else Color(0xFF065F46) }))
+                            }
+                        }
                     }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(text = description, style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f), fontSize = 10.5.sp, lineHeight = 14.sp), maxLines = 1)
