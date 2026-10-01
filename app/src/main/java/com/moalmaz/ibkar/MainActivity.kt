@@ -26,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -58,24 +59,11 @@ import java.util.Calendar
 import kotlin.random.Random
 
 // ==========================================
-// 1. Data & Helpers (كاملة بدون نقص)
+// 1. Data & Helpers
 // ==========================================
 data class CityLocation(val nameAr: String, val nameEn: String, val lat: Float, val lng: Float)
 val egyptCities = listOf(
-    CityLocation("القاهرة", "Cairo", 30.0444f, 31.2357f), CityLocation("الجيزة", "Giza", 30.0131f, 31.2089f),
-    CityLocation("الإسكندرية", "Alexandria", 31.2001f, 29.9187f), CityLocation("القليوبية", "Qalyubia", 30.4667f, 31.1833f),
-    CityLocation("البحيرة", "Beheira", 31.0333f, 30.4667f), CityLocation("مطروح", "Matrouh", 31.3525f, 27.2373f),
-    CityLocation("الغربية", "Gharbia", 30.7865f, 31.0004f), CityLocation("المنوفية", "Monufia", 30.5522f, 31.0090f),
-    CityLocation("كفر الشيخ", "Kafr El Sheikh", 31.1107f, 30.9388f), CityLocation("الدقهلية", "Dakahlia", 31.0364f, 31.3801f),
-    CityLocation("الشرقية", "Sharqia", 30.5877f, 31.5020f), CityLocation("دمياط", "Damietta", 31.4165f, 31.8133f),
-    CityLocation("بورسعيد", "Port Said", 31.2565f, 32.2841f), CityLocation("الإسماعيلية", "Ismailia", 30.6043f, 32.2723f),
-    CityLocation("السويس", "Suez", 29.9668f, 32.5498f), CityLocation("شمال سيناء", "North Sinai", 31.1316f, 33.7984f),
-    CityLocation("جنوب سيناء", "South Sinai", 28.2364f, 33.6254f), CityLocation("البحر الأحمر", "Red Sea", 27.2579f, 33.8116f),
-    CityLocation("الفيوم", "Faiyum", 29.3084f, 30.8428f), CityLocation("بني سويف", "Beni Suef", 29.0661f, 31.0994f),
-    CityLocation("المنيا", "Minya", 28.0871f, 30.7618f), CityLocation("أسيوط", "Asyut", 27.1810f, 31.1837f),
-    CityLocation("سوهاج", "Sohag", 26.5570f, 31.6948f), CityLocation("قنا", "Qena", 26.1615f, 32.7181f),
-    CityLocation("الأقصر", "Luxor", 25.6872f, 32.6396f), CityLocation("أسوان", "Aswan", 24.0889f, 32.8998f),
-    CityLocation("الوادي الجديد", "New Valley", 25.4390f, 30.5586f)
+    CityLocation("القاهرة", "Cairo", 30.0444f, 31.2357f), CityLocation("الإسكندرية", "Alexandria", 31.2001f, 29.9187f)
 )
 
 data class StepDhikr(val text: String, val count: Int, val benefit: String = "", val translation: String = "")
@@ -120,16 +108,13 @@ val hisnAlMuslimData = mapOf(
 // ==========================================
 // 2. Colors & Design System
 // ==========================================
-val AppBackground = Color(0xFF0F1123)
-val CardBackground = Color(0xFF222045)
-val CardStroke = Color(0xFF33315C)
-val PrimaryAccent = Color(0xFF6764FF)
-val TextLightPurple = Color(0xFFA5A4DF)
+val AppBackground = Color(0xFF10132B)
+val CardBackground = Color(0xFF22224A)
+val CardStroke = Color(0xFF333366)
+val PrimaryAccent = Color(0xFF6B7BFF)
+val TextLightPurple = Color(0xFFAAA9D1)
 val TextWhite = Color.White
 val SuccessGreen = Color(0xFF10B981)
-val GlassBgGradient = listOf(Color(0xFF0F1123), Color(0xFF1B183E), Color(0xFF130E2B))
-val GlassPanelBg = Color.White.copy(alpha = 0.05f)
-val GlassPanelBorder = Color.White.copy(alpha = 0.10f)
 
 class MainActivity : ComponentActivity() {
     private var initialDhikrTypeState = mutableStateOf<String?>(null)
@@ -139,11 +124,8 @@ class MainActivity : ComponentActivity() {
         PrayerNotificationManager.createNotificationChannel(this)
         handleIntent(intent)
         setContent {
-            val context = LocalContext.current
-            val themePrefs = remember(context) { context.getSharedPreferences("theme_prefs", Context.MODE_PRIVATE) }
-            val isArabic by remember { mutableStateOf(themePrefs.getBoolean("is_arabic", true)) }
-
             MyApplicationTheme(darkTheme = true) {
+                // فرض الاتجاه من اليمين لليسار لضبط الشاشة العربية تماما
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     Surface(modifier = Modifier.fillMaxSize(), color = AppBackground) {
                         MainAppNavigation(
@@ -166,7 +148,7 @@ enum class AppRoute { Home, Stats, FullScreenHisn, FullScreenDhikr }
 fun MainAppNavigation(viewModel: WorshipViewModel = viewModel(), initialDhikrType: String?, onInitialDhikrHandled: () -> Unit) {
     val context = LocalContext.current
     var currentRoute by remember { mutableStateOf(AppRoute.Home) }
-    var activeDhikrType by remember { mutableStateOf<String?>(initialDhikrType) }
+    var activeDhikrType by remember { mutableStateOf<String?>("morning") }
     var historyData by remember { mutableStateOf<List<DailyRecord>>(emptyList()) }
     
     val recordState = viewModel.currentRecord.collectAsStateWithLifecycle()
@@ -216,13 +198,7 @@ fun MainAppNavigation(viewModel: WorshipViewModel = viewModel(), initialDhikrTyp
         val cal = PrayerTimeCalculator.getLocalCalendar(31.2001, 29.9187) // الإسكندرية
         PrayerTimeCalculator.calculatePrayerTimes(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH), 31.2001, 29.9187, 5)
     }
-    var upcomingPrayerInfoState by remember(todayTimesRaw) { mutableStateOf<UpcomingPrayerInfo?>(null) }
-    val isTodaySelected = activeRecord.date == DateHelper.getTodayDateString(context)
-
-    LaunchedEffect(todayTimesRaw, isTodaySelected) {
-        if (isTodaySelected) { while (true) { upcomingPrayerInfoState = getUpcomingPrayer(todayTimesRaw, 31.2001, 29.9187); delay(1000L) } }
-    }
-
+    
     Scaffold(
         bottomBar = {
             if (currentRoute == AppRoute.Home || currentRoute == AppRoute.Stats) {
@@ -245,7 +221,7 @@ fun MainAppNavigation(viewModel: WorshipViewModel = viewModel(), initialDhikrTyp
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(GlassBgGradient)).padding(paddingValues)) {
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             when (currentRoute) {
                 AppRoute.Home -> {
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -256,8 +232,7 @@ fun MainAppNavigation(viewModel: WorshipViewModel = viewModel(), initialDhikrTyp
                             onTogglePrayer = { viewModel.togglePrayer(it) },
                             onOpenDhikrMenu = { showAdhkarDialog = true },
                             onOpenWird = { showWirdDialog = true },
-                            onOpenTasbeeh = { showTasbeehDialog = true },
-                            onOpenHisn = { currentRoute = AppRoute.FullScreenHisn }
+                            onOpenTasbeeh = { showTasbeehDialog = true }
                         )
                     }
                 }
@@ -294,11 +269,11 @@ fun MainAppNavigation(viewModel: WorshipViewModel = viewModel(), initialDhikrTyp
 }
 
 // ==========================================
-// Custom Icons (To Match Image Exactly)
+// Custom Icons (لتجنب انهيار التطبيق ومطابقة الصورة)
 // ==========================================
 @Composable
 fun CustomBadgeIcon() {
-    Canvas(modifier = Modifier.size(34.dp)) {
+    Canvas(modifier = Modifier.size(38.dp)) {
         val w = size.width; val h = size.height
         drawCircle(color = TextLightPurple, radius = w * 0.35f, center = Offset(w/2, h*0.4f), style = Stroke(width = 4f))
         drawLine(color = TextLightPurple, start = Offset(w*0.3f, h*0.7f), end = Offset(w*0.2f, h), strokeWidth = 4f)
@@ -310,8 +285,8 @@ fun CustomBadgeIcon() {
 fun CustomBookIcon() {
     Canvas(modifier = Modifier.size(28.dp)) {
         val w = size.width; val h = size.height
-        drawRoundRect(color = TextLightPurple, topLeft = Offset(w*0.1f, h*0.2f), size = Size(w*0.35f, h*0.6f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f), style = Stroke(3f))
-        drawRoundRect(color = TextLightPurple, topLeft = Offset(w*0.55f, h*0.2f), size = Size(w*0.35f, h*0.6f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f), style = Stroke(3f))
+        drawRoundRect(color = TextLightPurple, topLeft = Offset(w*0.1f, h*0.2f), size = Size(w*0.35f, h*0.6f), style = Stroke(3f))
+        drawRoundRect(color = TextLightPurple, topLeft = Offset(w*0.55f, h*0.2f), size = Size(w*0.35f, h*0.6f), style = Stroke(3f))
         drawLine(color = TextLightPurple, start = Offset(w/2, h*0.2f), end = Offset(w/2, h*0.8f), strokeWidth = 3f)
     }
 }
@@ -341,7 +316,7 @@ fun TopHeaderSection() {
     Column(modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = "إِبْكَـار", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = TextWhite, fontSize = 28.sp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 4.dp)) {
-            Icon(Icons.Filled.LocationOn, null, tint = TextLightPurple, modifier = Modifier.size(14.dp))
+            Icon(Icons.Filled.LocationOn, null, tint = TextLightPurple, modifier = Modifier.size(12.dp))
             Text(text = "الإسكندرية، مصر", style = MaterialTheme.typography.labelMedium.copy(color = TextLightPurple, fontSize = 12.sp))
         }
     }
@@ -354,12 +329,14 @@ fun HomeScreenContent(
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)) {
         
-        // 1. بطاقة إجمالي النقاط (بالتنسيق الصحيح)
+        // 1. بطاقة إجمالي النقاط (بالترتيب الصحيح)
         item {
             Box(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp).clip(RoundedCornerShape(24.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(24.dp)).padding(20.dp)) {
                 Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(horizontalAlignment = Alignment.Start) {
+                    CustomBadgeIcon()
+                    Column(horizontalAlignment = Alignment.End) {
                         Text(text = "إجمالي النقاط", style = MaterialTheme.typography.labelMedium.copy(color = TextLightPurple, fontSize = 13.sp))
+                        // إصلاح الأرقام لتصبح (80 / 100) بدلا من (100 / 80)
                         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                             Row(verticalAlignment = Alignment.Bottom) {
                                 Text(text = "$dailyPoints", style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Black, color = PrimaryAccent, fontSize = 36.sp))
@@ -367,30 +344,36 @@ fun HomeScreenContent(
                             }
                         }
                     }
-                    CustomBadgeIcon()
                 }
+                // شريط التقدم
                 val dayProgress = totalDoneItems.toFloat() / 8f
                 Box(modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).height(6.dp).clip(RoundedCornerShape(10.dp)).background(AppBackground)) {
-                    Box(modifier = Modifier.fillMaxWidth(dayProgress).height(6.dp).clip(RoundedCornerShape(10.dp)).background(PrimaryAccent))
+                    // جعل شريط التقدم يبدأ من اليمين لليسار
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                        Box(modifier = Modifier.fillMaxWidth(dayProgress).height(6.dp).clip(RoundedCornerShape(10.dp)).background(PrimaryAccent))
+                    }
                 }
             }
         }
 
-        // 2. المربعات الثلاثة (الأذكار يمين، التسبيح وسط، الورد يسار)
+        // 2. المربعات الثلاثة
         item {
             Row(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // الأذكار (يمين)
                 Box(modifier = Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(20.dp)).clickable { onOpenDhikrMenu() }, contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         CustomMoonIcon()
                         Text("الأذكار", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite, fontSize = 14.sp))
                     }
                 }
+                // التسبيح (وسط)
                 Box(modifier = Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(20.dp)).clickable { onOpenTasbeeh() }, contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         CustomTouchIcon()
                         Text("التسبيح", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite, fontSize = 14.sp))
                     }
                 }
+                // الورد (يسار)
                 Box(modifier = Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(20.dp)).clickable { onOpenWird() }, contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         CustomBookIcon()
@@ -417,19 +400,22 @@ fun HomeScreenContent(
     }
 }
 
-// صف الصلاة (الدائرة يمين، الاسم يمين، الوقت يسار)
+// تصميم صف الصلاة (الدائرة يمين، الاسم يمين، الوقت يسار)
 @Composable
 fun PrayerItemRow(name: String, isDone: Boolean, timeText: String, onToggle: () -> Unit) {
     val bgColor = if (isDone) PrimaryAccent.copy(alpha = 0.2f) else CardBackground
     val strokeColor = if (isDone) PrimaryAccent else CardStroke
 
     Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(bgColor).border(1.dp, strokeColor, RoundedCornerShape(16.dp)).clickable { onToggle() }.padding(horizontal = 20.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+        // دائرة التحديد على اليمين
         if (isDone) Icon(Icons.Filled.CheckCircle, null, tint = PrimaryAccent, modifier = Modifier.size(24.dp))
         else Canvas(modifier = Modifier.size(22.dp)) { drawCircle(color = TextWhite.copy(alpha = 0.15f), style = Stroke(width = 3f)) }
         
         Spacer(Modifier.width(16.dp))
+        // الاسم
         Text(text = name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite))
         Spacer(Modifier.weight(1f))
+        // الوقت على اليسار
         Text(text = timeText, style = MaterialTheme.typography.bodyMedium.copy(color = TextLightPurple))
     }
 }
@@ -442,12 +428,14 @@ fun AdhkarSelectionDialog(record: DailyRecord, onToggleMorning: () -> Unit, onTo
         title = { Text("الأذكار اليومية", color = TextWhite, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // الصباح
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(AppBackground).border(1.dp, CardStroke, RoundedCornerShape(12.dp)).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onToggleMorning, modifier = Modifier.size(32.dp)) {
                         if (record.morningDhikrDone) Icon(Icons.Filled.CheckCircle, null, tint = PrimaryAccent) else Canvas(modifier = Modifier.size(22.dp)) { drawCircle(color = TextWhite.copy(alpha=0.2f), style = Stroke(width=3f)) }
                     }
                     Text("أذكار الصباح", color = TextWhite, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).clickable { onReadMorning() }.padding(horizontal = 16.dp), textAlign = TextAlign.Start)
                 }
+                // المساء
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(AppBackground).border(1.dp, CardStroke, RoundedCornerShape(12.dp)).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onToggleEvening, modifier = Modifier.size(32.dp)) {
                         if (record.eveningDhikrDone) Icon(Icons.Filled.CheckCircle, null, tint = PrimaryAccent) else Canvas(modifier = Modifier.size(22.dp)) { drawCircle(color = TextWhite.copy(alpha=0.2f), style = Stroke(width=3f)) }
@@ -476,7 +464,7 @@ fun TasbeehGlassDialog(count: Int, onIncrement: () -> Unit, onReset: () -> Unit,
                 TextButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onReset() }) { Text("إعادة ضبط", color = TextLightPurple) }
             }
         },
-        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent)) { Text("إغلاق") } }
+        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent)) { Text("إغلاق", color=TextWhite) } }
     )
 }
 
@@ -495,19 +483,21 @@ fun WirdGlassDialog(pages: Int, onIncrease: () -> Unit, onDecrease: () -> Unit, 
                 }
             }
         },
-        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent)) { Text("حفظ", color = TextWhite) } }
+        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent)) { Text("حفظ", color=TextWhite) } }
     )
 }
 
-// شاشة الإحصائيات (كاملة)
+// ==========================================
+// 6. الشاشات الكاملة (التاريخ والحصن والأذكار)
+// ==========================================
 @Composable
 fun AdvancedStatsScreen(history: List<DailyRecord>) {
     val totalScore = history.sumOf { it.calculatePoints() }
     val perfectDays = history.count { it.calculatePoints() == 100 }
     val historyItems = history.reversed()
 
-    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 20.dp, bottom = 100.dp, start = 20.dp, end = 20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        item { Text(text = "سجل الإنجازات", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = TextWhite)) }
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 20.dp, bottom = 100.dp, start = 24.dp, end = 24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        item { Text("سجل الإنجازات", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = TextWhite)) }
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(24.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(24.dp)).padding(16.dp)) {
@@ -543,7 +533,7 @@ fun AdvancedStatsScreen(history: List<DailyRecord>) {
                 if (!day.eveningDhikrDone) missed.add("المساء")
                 
                 val pts = day.calculatePoints()
-                Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(GlassPanelBg).border(1.dp, GlassPanelBorder, RoundedCornerShape(16.dp)).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(16.dp)).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(if (pts == 100) SuccessGreen.copy(alpha=0.2f) else PrimaryAccent.copy(alpha=0.2f)).border(2.dp, if (pts == 100) SuccessGreen else PrimaryAccent, CircleShape), contentAlignment = Alignment.Center) {
                         Text("$pts", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, color = TextWhite))
                     }
@@ -559,30 +549,49 @@ fun AdvancedStatsScreen(history: List<DailyRecord>) {
     }
 }
 
-data class UpcomingPrayerInfo(val tag: String, val name: String, val timeStr: String, val diffMinutes: Int, val diffSeconds: Int)
-
-fun getUpcomingPrayer(todayTimes: Map<String, Pair<Int, Int>>, latitude: Double, longitude: Double, isArabic: Boolean): UpcomingPrayerInfo? {
-    val now = PrayerTimeCalculator.getLocalCalendar(latitude, longitude)
-    val cMin = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
-    val cSec = now.get(Calendar.SECOND)
-    val cTotal = cMin * 60 + cSec
-    val pList = listOf("fajr" to "الفجر", "dhuhr" to "الظهر", "asr" to "العصر", "maghrib" to "المغرب", "isha" to "العشاء")
-    for (p in pList) {
-        val t = todayTimes[p.first]
-        if (t != null) {
-            val pTotal = (t.first * 60 + t.second) * 60
-            if (pTotal > cTotal) {
-                val r = pTotal - cTotal
-                val h12 = if (t.first % 12 == 0) 12 else t.first % 12
-                return UpcomingPrayerInfo(p.first, p.second, "%d:%02d %s".format(h12, t.second, if(t.first>=12) "م" else "ص"), r / 60, r % 60)
+@Composable
+fun FullScreenHisn(onBack: () -> Unit) {
+    var activeCategory by remember { mutableStateOf<String?>(null) }
+    if (activeCategory == null) {
+        Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) { Icon(Icons.Filled.KeyboardArrowRight, null, tint = TextWhite) }
+                Text(text = "حصن المسلم", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, color = TextWhite), modifier = Modifier.padding(start = 16.dp))
+            }
+            val cats = listOf("sleep" to "أذكار النوم", "wakeup" to "الاستيقاظ", "food" to "الطعام", "travel" to "السفر", "home" to "المنزل", "mosque" to "المسجد", "toilet" to "الخلاء", "rain" to "المطر")
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(cats) { cat ->
+                    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(16.dp)).clickable { activeCategory = cat.first }.padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(text = cat.second, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite))
+                        Icon(Icons.Filled.KeyboardArrowLeft, null, tint = TextLightPurple)
+                    }
+                }
+            }
+        }
+    } else {
+        val list = hisnAlMuslimData[activeCategory] ?: emptyList()
+        Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { activeCategory = null }) { Icon(Icons.Filled.KeyboardArrowRight, null, tint = TextWhite) }
+                Text(text = "الأذكار", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, color = TextWhite), modifier = Modifier.padding(start = 16.dp))
+            }
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                items(list) { item ->
+                    Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(24.dp)).padding(20.dp)) {
+                        Column {
+                            Text(text = item.text, style = MaterialTheme.typography.titleMedium.copy(lineHeight = 32.sp, fontWeight = FontWeight.Bold, color = TextWhite), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                            if (item.benefit.isNotEmpty()) {
+                                Box(modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(12.dp)).background(AppBackground).padding(10.dp), contentAlignment = Alignment.Center) {
+                                    Text(text = "الفضل: ${item.benefit}", style = MaterialTheme.typography.labelSmall.copy(color = TextLightPurple))
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
-    return null
 }
-
-@Composable
-fun FullScreenHisn(onBack: () -> Unit) {}
 
 @Composable
 fun FullScreenDhikrReading(type: String, onComplete: () -> Unit, onDismiss: () -> Unit) {
@@ -614,7 +623,7 @@ fun FullScreenDhikrReading(type: String, onComplete: () -> Unit, onDismiss: () -
             Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 20.dp).clip(RoundedCornerShape(24.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(24.dp)).padding(24.dp), contentAlignment = Alignment.Center) {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(text = currentDhikr.text, style = MaterialTheme.typography.headlineSmall.copy(lineHeight = 36.sp, fontWeight = FontWeight.Bold, color = TextWhite), textAlign = TextAlign.Center)
-                    if (currentDhikr.benefit.isNotEmpty()) { Box(modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(CardStroke).padding(horizontal = 16.dp, vertical = 10.dp)) { Text(text = "الفضل: ${currentDhikr.benefit}", style = MaterialTheme.typography.bodySmall.copy(color = TextLightPurple), textAlign = TextAlign.Center) } }
+                    if (currentDhikr.benefit.isNotEmpty()) { Box(modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(AppBackground).padding(horizontal = 16.dp, vertical = 10.dp)) { Text(text = "الفضل: ${currentDhikr.benefit}", style = MaterialTheme.typography.bodySmall.copy(color = TextLightPurple), textAlign = TextAlign.Center) } }
                 }
             }
             Box(modifier = Modifier.size(115.dp).clip(CircleShape).background(PrimaryAccent.copy(alpha = 0.2f)).border(2.dp, PrimaryAccent, CircleShape).clickable {
@@ -631,29 +640,17 @@ fun FullScreenDhikrReading(type: String, onComplete: () -> Unit, onDismiss: () -
                 TextButton(onClick = { currentCountsLeft[currentIndex] = 0; if (currentIndex < list.size - 1) currentIndex++ else isFinished = true }) { Text("تخطي", color = PrimaryAccent, fontWeight = FontWeight.Bold) }
             }
         } else {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.CheckCircle, null, tint = SuccessGreen, modifier = Modifier.size(80.dp))
-                Text(text = "تقبل الله طاعتك!", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold, color = SuccessGreen))
-                Button(onClick = onComplete, colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen), modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("إتمام", color = Color.White) }
+            Box(modifier = Modifier.fillMaxSize()) {
+                CelebrationEffect()
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth().align(Alignment.Center)) {
+                    Icon(Icons.Filled.CheckCircle, null, tint = SuccessGreen, modifier = Modifier.size(80.dp))
+                    Text(text = "تقبل الله طاعتك!", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold, color = SuccessGreen))
+                    Button(onClick = onComplete, colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen), modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("إتمام", color = Color.White) }
+                }
             }
         }
     }
 }
-
-@Composable
-fun WorshipCelebrationDialog(title: String, description: String, isArabic: Boolean, onDismiss: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        CelebrationEffect()
-        AlertDialog(
-            onDismissRequest = onDismiss, containerColor = CardBackground,
-            title = { Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-            text = { Text(description, style = MaterialTheme.typography.bodyMedium.copy(color = TextLightPurple), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-            confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen), modifier = Modifier.fillMaxWidth()) { Text("متابعة", color = Color.White, fontWeight = FontWeight.Bold) } }
-        )
-    }
-}
-
-data class Particle(var x: Float, var y: Float, var speedY: Float, var speedX: Float, val color: Color, val isBalloon: Boolean, val size: Float)
 
 @Composable
 fun CelebrationEffect() {
@@ -662,3 +659,5 @@ fun CelebrationEffect() {
     LaunchedEffect(Unit) { while (true) { withFrameNanos { trigger += 1f }; particles.forEach { p -> p.y += p.speedY; p.x += p.speedX; if (!p.isBalloon && p.y > 3000f) p.y = -100f; if (p.isBalloon && p.y < -500f) p.y = 2500f } } }
     Canvas(modifier = Modifier.fillMaxSize()) { trigger.let { _ -> particles.forEach { p -> if (p.isBalloon) drawCircle(p.color.copy(alpha=0.8f), p.size, Offset(p.x, p.y)) else drawRect(p.color, Offset(p.x, p.y), Size(p.size, p.size)) } } }
 }
+
+data class Particle(var x: Float, var y: Float, var speedY: Float, var speedX: Float, val color: Color, val isBalloon: Boolean, val size: Float)
