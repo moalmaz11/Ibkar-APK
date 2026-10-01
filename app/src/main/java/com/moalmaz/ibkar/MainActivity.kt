@@ -2,7 +2,7 @@ package com.moalmaz.ibkar
 
 import android.content.Context
 import android.content.Intent
-import android.location.LocationManager
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,9 +25,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -56,32 +58,19 @@ import java.util.Calendar
 import kotlin.random.Random
 
 // ==========================================
-// 1. الألوان (مطابقة بالبيكسل للصورة الأصلية)
+// 1. Data & Database Arrays (مدمجة لضمان عدم نقص أي بيانات)
 // ==========================================
-val AppBackground = Color(0xFF13152C)
-val CardBackground = Color(0xFF232350)
-val CardStroke = Color(0xFF353569)
-val PrimaryAccent = Color(0xFF6C63FF)
-val TextLightPurple = Color(0xFFA5A3D8)
-val TextWhite = Color.White
-val SuccessGreen = Color(0xFF10B981)
-
-// ==========================================
-// 2. البيانات كاملة
-// ==========================================
-data class CityLocation(val nameAr: String, val nameEn: String, val lat: Float, val lng: Float)
-val egyptCities = listOf(CityLocation("الإسكندرية", "Alexandria", 31.2001f, 29.9187f), CityLocation("القاهرة", "Cairo", 30.0444f, 31.2357f))
-
 data class StepDhikr(val text: String, val count: Int, val benefit: String = "", val translation: String = "")
 val morningAdhkarList = listOf(
-    StepDhikr("أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ...", 1, "سؤال خير اليوم"),
-    StepDhikr("اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ، خَلَقْتَنـي وَأَنا عَبْـدُك...", 1, "سيد الاستغفار"),
-    StepDhikr("بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ...", 3, "لم يضره شيء")
+    StepDhikr("أَعُوذُ بِاللهِ مِنْ الشَّيْطَانِ الرَّجِيمِ\nاللّهُ لاَ إِلَـهَ إِلاَّ هُوَ الْحَيُّ الْقَيُّومُ...", 1, "أجير من الجن حتى يمسي"),
+    StepDhikr("بِسْمِ اللهِ الرَّحْمنِ الرَّحِيم\nقُلْ هُوَ ٱللَّهُ أَحَدٌ، ٱللَّهُ ٱلصَّمَدُ...", 3, "تكفيه من كل شيء"),
+    StepDhikr("أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لا إِلَهَ إِلا اللَّهُ...", 1, "سؤال خير اليوم"),
+    StepDhikr("اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ، خَلَقْتَنـي وَأَنا عَبْـدُك...", 1, "سيد الاستغفار")
 )
 val eveningAdhkarList = listOf(
-    StepDhikr("أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ...", 1, "سؤال خير الليلة"),
-    StepDhikr("اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ، خَلَقْتَنـي وَأَنا عَبْـدُك...", 1, "سيد الاستغفار"),
-    StepDhikr("أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ.", 3, "لم يضره شيء")
+    StepDhikr("أَعُوذُ بِاللهِ مِنْ الشَّيْطَانِ الرَّجِيمِ\nاللّهُ لاَ إِلَـهَ إِلاَّ هُوَ الْحَيُّ الْقَيُّومُ...", 1, "أجير من الجن حتى يصبح"),
+    StepDhikr("أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لا إِلَهَ إِلا اللَّهُ...", 1, "سؤال خير الليلة"),
+    StepDhikr("اللّهُـمَّ أَنْتَ رَبِّـي لا إِلهَ إِلاّ أَنْتَ، خَلَقْتَنـي وَأَنا عَبْـدُك...", 1, "سيد الاستغفار")
 )
 val hisnAlMuslimData = mapOf(
     "sleep" to listOf(StepDhikr("بِاسْمِكَ رَبِّـي وَضَعْـتُ جَنْـبي...", 1, "الحفظ أثناء النوم")),
@@ -93,8 +82,16 @@ val hisnAlMuslimData = mapOf(
 )
 
 // ==========================================
-// 3. النشاط الأساسي والملاحة
+// 2. Colors & Design System
 // ==========================================
+val AppBackground = Color(0xFF13152C)
+val CardBackground = Color(0xFF232350)
+val CardStroke = Color(0xFF353569)
+val PrimaryAccent = Color(0xFF6C63FF)
+val TextLightPurple = Color(0xFFA5A3D8)
+val TextWhite = Color.White
+val SuccessGreen = Color(0xFF10B981)
+
 class MainActivity : ComponentActivity() {
     private var initialDhikrTypeState = mutableStateOf<String?>(null)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -103,11 +100,18 @@ class MainActivity : ComponentActivity() {
         PrayerNotificationManager.createNotificationChannel(this)
         handleIntent(intent)
         setContent {
+            val themePrefs = remember { getSharedPreferences("theme_prefs", Context.MODE_PRIVATE) }
+            val isArabic by remember { mutableStateOf(themePrefs.getBoolean("is_arabic", true)) }
+
             MyApplicationTheme(darkTheme = true) {
-                // تفعيل الاتجاه العربي بشكل كامل لضبط أماكن العناصر
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                CompositionLocalProvider(LocalLayoutDirection provides if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr) {
                     Surface(modifier = Modifier.fillMaxSize(), color = AppBackground) {
-                        MainAppNavigation(initialDhikrType = initialDhikrTypeState.value) { initialDhikrTypeState.value = null }
+                        MainAppNavigation(
+                            isArabic = isArabic,
+                            onToggleLanguage = { val nv = !isArabic; themePrefs.edit().putBoolean("is_arabic", nv).apply() },
+                            initialDhikrType = initialDhikrTypeState.value,
+                            onInitialDhikrHandled = { initialDhikrTypeState.value = null }
+                        )
                     }
                 }
             }
@@ -121,7 +125,7 @@ enum class AppRoute { Home, Stats, FullScreenHisn, FullScreenDhikr }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainAppNavigation(viewModel: WorshipViewModel = viewModel(), initialDhikrType: String?, onInitialDhikrHandled: () -> Unit) {
+fun MainAppNavigation(isArabic: Boolean, onToggleLanguage: () -> Unit, viewModel: WorshipViewModel = viewModel(), initialDhikrType: String?, onInitialDhikrHandled: () -> Unit) {
     val context = LocalContext.current
     var currentRoute by remember { mutableStateOf(AppRoute.Home) }
     var activeDhikrType by remember { mutableStateOf<String?>("morning") }
@@ -129,10 +133,12 @@ fun MainAppNavigation(viewModel: WorshipViewModel = viewModel(), initialDhikrTyp
     
     val recordState = viewModel.currentRecord.collectAsStateWithLifecycle()
     val record = recordState.value
+    val streak = viewModel.currentStreak.collectAsStateWithLifecycle().value
 
     var showTasbeehDialog by remember { mutableStateOf(false) }
     var showWirdDialog by remember { mutableStateOf(false) }
     var showAdhkarDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(initialDhikrType) {
         if (initialDhikrType != null) { activeDhikrType = initialDhikrType; currentRoute = AppRoute.FullScreenDhikr; onInitialDhikrHandled() }
@@ -181,14 +187,14 @@ fun MainAppNavigation(viewModel: WorshipViewModel = viewModel(), initialDhikrTyp
                 NavigationBar(containerColor = AppBackground, contentColor = TextWhite, tonalElevation = 0.dp) {
                     NavigationBarItem(
                         icon = { Icon(Icons.Filled.Home, null, modifier = Modifier.size(24.dp)) },
-                        label = { Text("الرئيسية", fontWeight = FontWeight.Bold) },
+                        label = { Text(if(isArabic) "الرئيسية" else "Home", fontWeight = FontWeight.Bold) },
                         selected = currentRoute == AppRoute.Home,
                         onClick = { currentRoute = AppRoute.Home },
                         colors = NavigationBarItemDefaults.colors(selectedIconColor = PrimaryAccent, selectedTextColor = PrimaryAccent, unselectedIconColor = TextLightPurple, unselectedTextColor = TextLightPurple, indicatorColor = Color.Transparent)
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Filled.List, null, modifier = Modifier.size(24.dp)) },
-                        label = { Text("السجل", fontWeight = FontWeight.Bold) },
+                        label = { Text(if(isArabic) "السجل" else "Stats", fontWeight = FontWeight.Bold) },
                         selected = currentRoute == AppRoute.Stats,
                         onClick = { currentRoute = AppRoute.Stats },
                         colors = NavigationBarItemDefaults.colors(selectedIconColor = PrimaryAccent, selectedTextColor = PrimaryAccent, unselectedIconColor = TextLightPurple, unselectedTextColor = TextLightPurple, indicatorColor = Color.Transparent)
@@ -201,23 +207,24 @@ fun MainAppNavigation(viewModel: WorshipViewModel = viewModel(), initialDhikrTyp
             when (currentRoute) {
                 AppRoute.Home -> {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        TopHeaderSection()
+                        TopHeaderSection(isArabic, onSettingsClick = { showSettingsDialog = true })
                         HomeScreenContent(
-                            record = activeRecord, dailyPoints = dailyPoints, totalDoneItems = totalDoneItems,
+                            isArabic = isArabic, record = activeRecord, dailyPoints = dailyPoints, totalDoneItems = totalDoneItems,
                             todayTimes = todayTimesRaw,
                             onTogglePrayer = { viewModel.togglePrayer(it) },
                             onOpenDhikrMenu = { showAdhkarDialog = true },
                             onOpenWird = { showWirdDialog = true },
-                            onOpenTasbeeh = { showTasbeehDialog = true }
+                            onOpenTasbeeh = { showTasbeehDialog = true },
+                            onOpenHisn = { currentRoute = AppRoute.FullScreenHisn }
                         )
                     }
                 }
-                AppRoute.Stats -> AdvancedStatsScreen(historyData)
-                AppRoute.FullScreenHisn -> FullScreenHisn(onBack = { currentRoute = AppRoute.Home })
+                AppRoute.Stats -> AdvancedStatsScreen(isArabic, historyData)
+                AppRoute.FullScreenHisn -> FullScreenHisn(isArabic, onBack = { currentRoute = AppRoute.Home })
                 AppRoute.FullScreenDhikr -> {
                     activeDhikrType?.let { type ->
                         FullScreenDhikrReading(
-                            type = type, onDismiss = { currentRoute = AppRoute.Home },
+                            type = type, isArabic = isArabic, onDismiss = { currentRoute = AppRoute.Home },
                             onComplete = {
                                 if (type == "morning" && !activeRecord.morningDhikrDone) viewModel.toggleMorningDhikr()
                                 if (type == "evening" && !activeRecord.eveningDhikrDone) viewModel.toggleEveningDhikr()
@@ -228,11 +235,11 @@ fun MainAppNavigation(viewModel: WorshipViewModel = viewModel(), initialDhikrTyp
                 }
             }
 
-            if (showTasbeehDialog) TasbeehGlassDialog(activeRecord.dhikrCount, { viewModel.incrementDhikr() }, { viewModel.resetDhikr() }) { showTasbeehDialog = false }
-            if (showWirdDialog) WirdGlassDialog(activeRecord.quranPages, { viewModel.setQuranPages(activeRecord.quranPages + 1) }, { viewModel.setQuranPages(activeRecord.quranPages - 1) }) { showWirdDialog = false }
+            if (showTasbeehDialog) TasbeehGlassDialog(isArabic, activeRecord.dhikrCount, { viewModel.incrementDhikr() }, { viewModel.resetDhikr() }) { showTasbeehDialog = false }
+            if (showWirdDialog) WirdGlassDialog(isArabic, activeRecord.quranPages, { viewModel.setQuranPages(activeRecord.quranPages + 1) }, { viewModel.setQuranPages(activeRecord.quranPages - 1) }) { showWirdDialog = false }
             if (showAdhkarDialog) {
                 AdhkarSelectionDialog(
-                    record = activeRecord,
+                    isArabic = isArabic, record = activeRecord,
                     onToggleMorning = { viewModel.toggleMorningDhikr() },
                     onToggleEvening = { viewModel.toggleEveningDhikr() },
                     onReadMorning = { activeDhikrType = "morning"; currentRoute = AppRoute.FullScreenDhikr; showAdhkarDialog = false },
@@ -240,27 +247,28 @@ fun MainAppNavigation(viewModel: WorshipViewModel = viewModel(), initialDhikrTyp
                     onDismiss = { showAdhkarDialog = false }
                 )
             }
+            if (showSettingsDialog) SettingsDialog(isArabic, onToggleLanguage) { showSettingsDialog = false }
         }
     }
 }
 
 // ==========================================
-// 4. الأيقونات المرسومة لضمان التوافق والأناقة
+// 4. الأيقونات المرسومة لضمان الأناقة
 // ==========================================
 @Composable
 fun CustomBadgeIcon() {
-    Canvas(modifier = Modifier.size(34.dp)) {
+    Canvas(modifier = Modifier.size(38.dp)) {
         val w = size.width; val h = size.height
-        drawCircle(color = PrimaryAccent, radius = w * 0.28f, center = Offset(w/2, h*0.35f), style = Stroke(width = 4f))
-        drawCircle(color = PrimaryAccent, radius = w * 0.10f, center = Offset(w/2, h*0.35f), style = Stroke(width = 4f))
-        drawLine(color = PrimaryAccent, start = Offset(w*0.35f, h*0.6f), end = Offset(w*0.25f, h*0.9f), strokeWidth = 4f)
-        drawLine(color = PrimaryAccent, start = Offset(w*0.65f, h*0.6f), end = Offset(w*0.75f, h*0.9f), strokeWidth = 4f)
+        drawCircle(color = TextLightPurple, radius = w * 0.30f, center = Offset(w/2, h*0.35f), style = Stroke(width = 4f))
+        drawCircle(color = TextLightPurple, radius = w * 0.12f, center = Offset(w/2, h*0.35f), style = Stroke(width = 4f))
+        drawLine(color = TextLightPurple, start = Offset(w*0.35f, h*0.6f), end = Offset(w*0.25f, h*0.9f), strokeWidth = 4f)
+        drawLine(color = TextLightPurple, start = Offset(w*0.65f, h*0.6f), end = Offset(w*0.75f, h*0.9f), strokeWidth = 4f)
     }
 }
 
 @Composable
 fun CustomBookIcon() {
-    Canvas(modifier = Modifier.size(26.dp)) {
+    Canvas(modifier = Modifier.size(28.dp)) {
         val w = size.width; val h = size.height
         drawRoundRect(color = TextLightPurple, topLeft = Offset(w*0.05f, h*0.15f), size = Size(w*0.4f, h*0.7f), style = Stroke(3.5f))
         drawRoundRect(color = TextLightPurple, topLeft = Offset(w*0.55f, h*0.15f), size = Size(w*0.4f, h*0.7f), style = Stroke(3.5f))
@@ -270,7 +278,7 @@ fun CustomBookIcon() {
 
 @Composable
 fun CustomTouchIcon() {
-    Canvas(modifier = Modifier.size(26.dp)) {
+    Canvas(modifier = Modifier.size(28.dp)) {
         drawCircle(color = TextLightPurple, radius = size.width*0.25f, center = Offset(size.width/2, size.height*0.35f), style = Stroke(3.5f))
         drawLine(color = TextLightPurple, start = Offset(size.width/2, size.height*0.6f), end = Offset(size.width/2, size.height*0.9f), strokeWidth = 3.5f)
         drawCircle(color = TextLightPurple, radius = 3.5f, center = Offset(size.width/2, size.height*0.35f))
@@ -290,31 +298,33 @@ fun CustomMoonIcon() {
 // 5. واجهة الشاشة الرئيسية (تطابق الصورة تماماً)
 // ==========================================
 @Composable
-fun TopHeaderSection() {
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = "إِبْكَـار", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = TextWhite, fontSize = 28.sp))
+fun TopHeaderSection(isArabic: Boolean, onSettingsClick: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 28.dp, bottom = 20.dp, start = 24.dp, end = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Text(text = if(isArabic) "إِبْكَـار" else "Ibkar", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = TextWhite, fontSize = 28.sp), modifier = Modifier.align(Alignment.Center))
+            IconButton(onClick = onSettingsClick, modifier = Modifier.align(Alignment.CenterEnd)) { Icon(Icons.Filled.Settings, null, tint = TextLightPurple) }
+        }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
             Icon(Icons.Filled.LocationOn, null, tint = TextLightPurple, modifier = Modifier.size(14.dp))
-            Text(text = "الإسكندرية، مصر", style = MaterialTheme.typography.labelMedium.copy(color = TextLightPurple, fontSize = 13.sp))
+            Text(text = if(isArabic) "الإسكندرية، مصر" else "Alexandria, Egypt", style = MaterialTheme.typography.labelMedium.copy(color = TextLightPurple, fontSize = 13.sp))
         }
     }
 }
 
 @Composable
 fun HomeScreenContent(
-    record: DailyRecord, dailyPoints: Int, totalDoneItems: Int, todayTimes: Map<String, Pair<Int, Int>>, 
-    onTogglePrayer: (String) -> Unit, onOpenDhikrMenu: () -> Unit, onOpenWird: () -> Unit, onOpenTasbeeh: () -> Unit
+    isArabic: Boolean, record: DailyRecord, dailyPoints: Int, totalDoneItems: Int, todayTimes: Map<String, Pair<Int, Int>>, 
+    onTogglePrayer: (String) -> Unit, onOpenDhikrMenu: () -> Unit, onOpenWird: () -> Unit, onOpenTasbeeh: () -> Unit, onOpenHisn: () -> Unit
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)) {
         
         // بطاقة إجمالي النقاط
         item {
             Box(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp).clip(RoundedCornerShape(20.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(20.dp)).padding(20.dp)) {
-                // الاتجاه يمين (إجمالي النقاط يمين، الشارة يسار)
                 Row(modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(horizontalAlignment = Alignment.Start) {
-                        Text(text = "إجمالي النقاط", style = MaterialTheme.typography.labelMedium.copy(color = TextLightPurple, fontSize = 14.sp))
-                        // فرض LTR هنا فقط لضبط (80/100) بدلاً من (100/80)
+                    CustomBadgeIcon()
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(text = if(isArabic) "إجمالي النقاط" else "Total Points", style = MaterialTheme.typography.labelMedium.copy(color = TextLightPurple, fontSize = 14.sp))
                         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                             Row(verticalAlignment = Alignment.Bottom) {
                                 Text(text = "$dailyPoints", style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Black, color = PrimaryAccent, fontSize = 38.sp))
@@ -322,9 +332,7 @@ fun HomeScreenContent(
                             }
                         }
                     }
-                    CustomBadgeIcon()
                 }
-                // شريط التقدم
                 val dayProgress = totalDoneItems.toFloat() / 8f
                 Box(modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).height(6.dp).clip(RoundedCornerShape(10.dp)).background(CardStroke)) {
                     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
@@ -334,26 +342,34 @@ fun HomeScreenContent(
             }
         }
 
-        // الأزرار الثلاثة (الترتيب: الورد يمين، التسبيح وسط، الأذكار يسار)
+        // الأزرار الأربعة (الورد، التسبيح، الأذكار، حصن المسلم)
         item {
-            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(modifier = Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(20.dp)).clickable { onOpenWird() }, contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         CustomBookIcon()
-                        Text("الورد", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite, fontSize = 14.sp))
+                        Text(if(isArabic) "الورد" else "Wird", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite, fontSize = 14.sp))
                     }
                 }
                 Box(modifier = Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(20.dp)).clickable { onOpenTasbeeh() }, contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         CustomTouchIcon()
-                        Text("التسبيح", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite, fontSize = 14.sp))
+                        Text(if(isArabic) "التسبيح" else "Tasbeeh", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite, fontSize = 14.sp))
                     }
                 }
                 Box(modifier = Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(20.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(20.dp)).clickable { onOpenDhikrMenu() }, contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         CustomMoonIcon()
-                        Text("الأذكار", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite, fontSize = 14.sp))
+                        Text(if(isArabic) "الأذكار" else "Adhkar", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite, fontSize = 14.sp))
                     }
+                }
+            }
+        }
+        item {
+            Box(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp).height(65.dp).clip(RoundedCornerShape(20.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(20.dp)).clickable { onOpenHisn() }, contentAlignment = Alignment.Center) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Filled.Lock, null, tint = TextLightPurple)
+                    Text(if(isArabic) "حصن المسلم" else "Hisn Al-Muslim", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite, fontSize = 16.sp))
                 }
             }
         }
@@ -361,15 +377,14 @@ fun HomeScreenContent(
         // الصلوات المفروضة
         item {
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(text = "الصلوات المفروضة", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start)
-                
+                Text(text = if(isArabic) "الصلوات المفروضة" else "Obligatory Prayers", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start)
                 fun t(k: String): String { val d = todayTimes[k] ?: return ""; val h = if(d.first%12==0) 12 else d.first%12; return "%02d:%02d".format(h, d.second) }
                 
-                PrayerItemRow("الفجر", record.fajrDone, t("fajr")) { onTogglePrayer("fajr") }
-                PrayerItemRow("الظهر", record.dhuhrDone, t("dhuhr")) { onTogglePrayer("dhuhr") }
-                PrayerItemRow("العصر", record.asrDone, t("asr")) { onTogglePrayer("asr") }
-                PrayerItemRow("المغرب", record.maghribDone, t("maghrib")) { onTogglePrayer("maghrib") }
-                PrayerItemRow("العشاء", record.ishaDone, t("isha")) { onTogglePrayer("isha") }
+                PrayerItemRow(if(isArabic) "الفجر" else "Fajr", record.fajrDone, t("fajr")) { onTogglePrayer("fajr") }
+                PrayerItemRow(if(isArabic) "الظهر" else "Dhuhr", record.dhuhrDone, t("dhuhr")) { onTogglePrayer("dhuhr") }
+                PrayerItemRow(if(isArabic) "العصر" else "Asr", record.asrDone, t("asr")) { onTogglePrayer("asr") }
+                PrayerItemRow(if(isArabic) "المغرب" else "Maghrib", record.maghribDone, t("maghrib")) { onTogglePrayer("maghrib") }
+                PrayerItemRow(if(isArabic) "العشاء" else "Isha", record.ishaDone, t("isha")) { onTogglePrayer("isha") }
             }
         }
     }
@@ -382,77 +397,72 @@ fun PrayerItemRow(name: String, isDone: Boolean, timeText: String, onToggle: () 
     val strokeColor = if (isDone) PrimaryAccent else CardStroke
 
     Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(bgColor).border(1.dp, strokeColor, RoundedCornerShape(16.dp)).clickable { onToggle() }.padding(horizontal = 20.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-        
-        // الاسم على اليمين
-        Text(text = name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite))
+        if (isDone) Icon(Icons.Filled.CheckCircle, null, tint = PrimaryAccent, modifier = Modifier.size(24.dp))
+        else Canvas(modifier = Modifier.size(22.dp)) { drawCircle(color = TextWhite.copy(alpha = 0.15f), style = Stroke(width = 4f)) }
         Spacer(Modifier.width(20.dp))
-        
-        // الوقت في المنتصف
+        Text(text = name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite))
+        Spacer(Modifier.weight(1f))
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Text(text = timeText, style = MaterialTheme.typography.bodyMedium.copy(color = TextLightPurple, fontWeight = FontWeight.Bold))
         }
-        Spacer(Modifier.weight(1f))
-        
-        // الدائرة على اليسار
-        if (isDone) Icon(Icons.Filled.CheckCircle, null, tint = PrimaryAccent, modifier = Modifier.size(24.dp))
-        else Canvas(modifier = Modifier.size(22.dp)) { drawCircle(color = TextWhite.copy(alpha = 0.15f), style = Stroke(width = 4f)) }
     }
 }
 
-// نافذة الأذكار السريعة لحل مشكلة عدم الاحتساب السريع
+// ==========================================
+// 6. النوافذ والشاشات الكاملة (عادت للعمل بالكامل)
+// ==========================================
 @Composable
-fun AdhkarSelectionDialog(record: DailyRecord, onToggleMorning: () -> Unit, onToggleEvening: () -> Unit, onReadMorning: () -> Unit, onReadEvening: () -> Unit, onDismiss: () -> Unit) {
+fun AdhkarSelectionDialog(isArabic: Boolean, record: DailyRecord, onToggleMorning: () -> Unit, onToggleEvening: () -> Unit, onReadMorning: () -> Unit, onReadEvening: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss, containerColor = CardBackground,
-        title = { Text("الأذكار اليومية", color = TextWhite, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+        title = { Text(if(isArabic) "الأذكار اليومية" else "Daily Adhkar", color = TextWhite, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(AppBackground).border(1.dp, CardStroke, RoundedCornerShape(12.dp)).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("أذكار الصباح", color = TextWhite, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).clickable { onReadMorning() }.padding(horizontal = 16.dp), textAlign = TextAlign.Start)
                     IconButton(onClick = onToggleMorning, modifier = Modifier.size(32.dp)) {
                         if (record.morningDhikrDone) Icon(Icons.Filled.CheckCircle, null, tint = PrimaryAccent) else Canvas(modifier = Modifier.size(22.dp)) { drawCircle(color = TextWhite.copy(alpha=0.2f), style = Stroke(width=4f)) }
                     }
+                    Text(if(isArabic) "أذكار الصباح" else "Morning", color = TextWhite, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).clickable { onReadMorning() }.padding(horizontal = 16.dp), textAlign = TextAlign.Start)
                 }
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(AppBackground).border(1.dp, CardStroke, RoundedCornerShape(12.dp)).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("أذكار المساء", color = TextWhite, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).clickable { onReadEvening() }.padding(horizontal = 16.dp), textAlign = TextAlign.Start)
                     IconButton(onClick = onToggleEvening, modifier = Modifier.size(32.dp)) {
                         if (record.eveningDhikrDone) Icon(Icons.Filled.CheckCircle, null, tint = PrimaryAccent) else Canvas(modifier = Modifier.size(22.dp)) { drawCircle(color = TextWhite.copy(alpha=0.2f), style = Stroke(width=4f)) }
                     }
+                    Text(if(isArabic) "أذكار المساء" else "Evening", color = TextWhite, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).clickable { onReadEvening() }.padding(horizontal = 16.dp), textAlign = TextAlign.Start)
                 }
             }
         },
-        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent)) { Text("إغلاق", color = TextWhite) } }
+        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent)) { Text(if(isArabic) "إغلاق" else "Close", color = TextWhite) } }
     )
 }
 
-// نوافذ الورد والتسبيح
 @Composable
-fun TasbeehGlassDialog(count: Int, onIncrement: () -> Unit, onReset: () -> Unit, onDismiss: () -> Unit) {
+fun TasbeehGlassDialog(isArabic: Boolean, count: Int, onIncrement: () -> Unit, onReset: () -> Unit, onDismiss: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     AlertDialog(
         onDismissRequest = onDismiss, containerColor = CardBackground,
-        title = { Text("المسبحة الإلكترونية", color = TextWhite, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+        title = { Text(if(isArabic) "المسبحة الإلكترونية" else "Digital Tasbeeh", color = TextWhite, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.size(140.dp).clip(CircleShape).background(PrimaryAccent.copy(0.1f)).border(2.dp, PrimaryAccent, CircleShape).clickable { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onIncrement() }, contentAlignment = Alignment.Center) {
                     Text("$count", fontSize = 48.sp, fontWeight = FontWeight.Black, color = TextWhite)
                 }
                 Spacer(Modifier.height(16.dp))
-                TextButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onReset() }) { Text("إعادة ضبط", color = TextLightPurple) }
+                TextButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onReset() }) { Text(if(isArabic) "إعادة ضبط" else "Reset", color = TextLightPurple) }
             }
         },
-        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent)) { Text("إغلاق", color=TextWhite) } }
+        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent)) { Text(if(isArabic) "إغلاق" else "Close", color=TextWhite) } }
     )
 }
 
 @Composable
-fun WirdGlassDialog(pages: Int, onIncrease: () -> Unit, onDecrease: () -> Unit, onDismiss: () -> Unit) {
+fun WirdGlassDialog(isArabic: Boolean, pages: Int, onIncrease: () -> Unit, onDecrease: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss, containerColor = CardBackground,
-        title = { Text("ورد القرآن الكريم", color = TextWhite, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+        title = { Text(if(isArabic) "ورد القرآن الكريم" else "Quran Wird", color = TextWhite, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Text("عدد الصفحات المقروءة اليوم", color = TextLightPurple, modifier = Modifier.padding(bottom = 16.dp))
+                Text(if(isArabic) "عدد الصفحات المقروءة اليوم" else "Pages read today", color = TextLightPurple, modifier = Modifier.padding(bottom = 16.dp))
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onDecrease, modifier = Modifier.size(48.dp).background(AppBackground, CircleShape)) { Text("-", color = TextWhite, fontSize = 24.sp, fontWeight = FontWeight.Bold) }
@@ -462,54 +472,76 @@ fun WirdGlassDialog(pages: Int, onIncrease: () -> Unit, onDecrease: () -> Unit, 
                 }
             }
         },
-        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent)) { Text("حفظ", color=TextWhite) } }
+        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent)) { Text(if(isArabic) "حفظ" else "Save", color=TextWhite) } }
     )
 }
 
-// ==========================================
-// 6. الشاشات الكاملة التفاعلية
-// ==========================================
 @Composable
-fun AdvancedStatsScreen(history: List<DailyRecord>) {
+fun SettingsDialog(isArabic: Boolean, onToggleLanguage: () -> Unit, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss, containerColor = CardBackground,
+        title = { Text(if (isArabic) "الإعدادات" else "Settings", color = TextWhite, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(if(isArabic) "Change to English" else "تغيير للغة العربية", color = TextWhite)
+                    Switch(checked = !isArabic, onCheckedChange = { onToggleLanguage() }, colors = SwitchDefaults.colors(checkedThumbColor = PrimaryAccent, checkedTrackColor = PrimaryAccent.copy(alpha=0.5f)))
+                }
+                HorizontalDivider(color = CardStroke)
+                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(if (isArabic) "إِبْكَـار - صُنع بكل حب بواسطة مصطفى الماظ" else "Ibkar - Made with love by Mostafa Almaz", style = MaterialTheme.typography.labelSmall.copy(color = TextLightPurple, fontWeight = FontWeight.Bold), textAlign = TextAlign.Center)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://ibkar.vercel.app"))) } catch (e: Exception) {} }, colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent.copy(alpha = 0.2f))) { Text(if (isArabic) "الموقع" else "Web", color = PrimaryAccent) }
+                    }
+                }
+            }
+        },
+        confirmButton = { Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent)) { Text(if (isArabic) "إغلاق" else "Close", color = TextWhite) } }
+    )
+}
+
+@Composable
+fun AdvancedStatsScreen(isArabic: Boolean, history: List<DailyRecord>) {
     val totalScore = history.sumOf { it.calculatePoints() }
     val perfectDays = history.count { it.calculatePoints() == 100 }
     val historyItems = history.reversed()
 
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 20.dp, bottom = 100.dp, start = 24.dp, end = 24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        item { Text("سجل الإنجازات", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = TextWhite)) }
+        item { Text(if(isArabic) "سجل الإنجازات" else "Achievement Log", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = TextWhite)) }
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(24.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(24.dp)).padding(16.dp)) {
                     Column {
                         Icon(Icons.Filled.Star, null, tint = Color(0xFFF59E0B), modifier = Modifier.size(32.dp).padding(bottom = 8.dp))
-                        Text("النقاط الإجمالية", style = MaterialTheme.typography.labelMedium.copy(color = TextLightPurple))
+                        Text(if(isArabic) "النقاط الإجمالية" else "Total Points", style = MaterialTheme.typography.labelMedium.copy(color = TextLightPurple))
                         Text("$totalScore", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = TextWhite))
                     }
                 }
                 Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(24.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(24.dp)).padding(16.dp)) {
                     Column {
                         Icon(Icons.Filled.CheckCircle, null, tint = SuccessGreen, modifier = Modifier.size(32.dp).padding(bottom = 8.dp))
-                        Text("أيام كاملة", style = MaterialTheme.typography.labelMedium.copy(color = TextLightPurple))
+                        Text(if(isArabic) "أيام كاملة" else "Perfect Days", style = MaterialTheme.typography.labelMedium.copy(color = TextLightPurple))
                         Text("$perfectDays", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = TextWhite))
                     }
                 }
             }
         }
-        item { Text(text = "أداء الأيام السابقة", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite), modifier = Modifier.padding(top = 10.dp)) }
+        item { Text(text = if(isArabic) "أداء الأيام السابقة" else "Previous Days", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite), modifier = Modifier.padding(top = 10.dp)) }
 
         if (historyItems.isEmpty()) {
-            item { Text("لا توجد بيانات بعد.", color = TextLightPurple, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
+            item { Text(if(isArabic) "لا توجد بيانات بعد." else "No records yet.", color = TextLightPurple, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
         } else {
             items(historyItems) { day ->
                 val missed = mutableListOf<String>()
-                if (!day.fajrDone) missed.add("الفجر")
-                if (!day.dhuhrDone) missed.add("الظهر")
-                if (!day.asrDone) missed.add("العصر")
-                if (!day.maghribDone) missed.add("المغرب")
-                if (!day.ishaDone) missed.add("العشاء")
-                if (day.quranPages == 0) missed.add("القرآن")
-                if (!day.morningDhikrDone) missed.add("الصباح")
-                if (!day.eveningDhikrDone) missed.add("المساء")
+                if (!day.fajrDone) missed.add(if(isArabic) "الفجر" else "Fajr")
+                if (!day.dhuhrDone) missed.add(if(isArabic) "الظهر" else "Dhuhr")
+                if (!day.asrDone) missed.add(if(isArabic) "العصر" else "Asr")
+                if (!day.maghribDone) missed.add(if(isArabic) "المغرب" else "Maghrib")
+                if (!day.ishaDone) missed.add(if(isArabic) "العشاء" else "Isha")
+                if (day.quranPages == 0) missed.add(if(isArabic) "القرآن" else "Quran")
+                if (!day.morningDhikrDone) missed.add(if(isArabic) "الصباح" else "Morning")
+                if (!day.eveningDhikrDone) missed.add(if(isArabic) "المساء" else "Evening")
                 
                 val pts = day.calculatePoints()
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(16.dp)).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -521,8 +553,8 @@ fun AdvancedStatsScreen(history: List<DailyRecord>) {
                         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                             Text(text = day.date, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, color = TextWhite), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
                         }
-                        if (missed.isEmpty()) { Text(text = "علامة كاملة، أحسنت!", style = MaterialTheme.typography.labelSmall.copy(color = SuccessGreen, fontWeight = FontWeight.Bold)) } 
-                        else { Text(text = "فاتك: " + missed.joinToString("، "), style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFFF87171))) }
+                        if (missed.isEmpty()) { Text(text = if(isArabic) "علامة كاملة، أحسنت!" else "Perfect score!", style = MaterialTheme.typography.labelSmall.copy(color = SuccessGreen, fontWeight = FontWeight.Bold)) } 
+                        else { Text(text = (if(isArabic) "فاتك: " else "Missed: ") + missed.joinToString("، "), style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFFF87171))) }
                     }
                 }
             }
@@ -531,15 +563,15 @@ fun AdvancedStatsScreen(history: List<DailyRecord>) {
 }
 
 @Composable
-fun FullScreenHisn(onBack: () -> Unit) {
+fun FullScreenHisn(isArabic: Boolean, onBack: () -> Unit) {
     var activeCategory by remember { mutableStateOf<String?>(null) }
     if (activeCategory == null) {
         Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.Filled.KeyboardArrowRight, null, tint = TextWhite) }
-                Text(text = "حصن المسلم", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, color = TextWhite), modifier = Modifier.padding(start = 16.dp))
+                Text(text = if(isArabic) "حصن المسلم" else "Hisn Al-Muslim", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, color = TextWhite), modifier = Modifier.padding(start = 16.dp))
             }
-            val cats = listOf("sleep" to "أذكار النوم", "wakeup" to "الاستيقاظ", "food" to "الطعام", "travel" to "السفر", "home" to "المنزل", "mosque" to "المسجد", "toilet" to "الخلاء", "rain" to "المطر")
+            val cats = listOf("sleep" to (if(isArabic) "أذكار النوم" else "Sleep"), "wakeup" to (if(isArabic) "الاستيقاظ" else "Wake up"), "food" to (if(isArabic) "الطعام" else "Food"), "travel" to (if(isArabic) "السفر" else "Travel"), "home" to (if(isArabic) "المنزل" else "Home"), "mosque" to (if(isArabic) "المسجد" else "Mosque"))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(cats) { cat ->
                     Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(16.dp)).clickable { activeCategory = cat.first }.padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -554,7 +586,7 @@ fun FullScreenHisn(onBack: () -> Unit) {
         Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { activeCategory = null }) { Icon(Icons.Filled.KeyboardArrowRight, null, tint = TextWhite) }
-                Text(text = "الأذكار", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, color = TextWhite), modifier = Modifier.padding(start = 16.dp))
+                Text(text = if(isArabic) "الأذكار" else "Supplications", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, color = TextWhite), modifier = Modifier.padding(start = 16.dp))
             }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 items(list) { item ->
@@ -563,7 +595,7 @@ fun FullScreenHisn(onBack: () -> Unit) {
                             Text(text = item.text, style = MaterialTheme.typography.titleMedium.copy(lineHeight = 32.sp, fontWeight = FontWeight.Bold, color = TextWhite), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                             if (item.benefit.isNotEmpty()) {
                                 Box(modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(12.dp)).background(AppBackground).padding(10.dp), contentAlignment = Alignment.Center) {
-                                    Text(text = "الفضل: ${item.benefit}", style = MaterialTheme.typography.labelSmall.copy(color = TextLightPurple))
+                                    Text(text = (if(isArabic) "الفضل: " else "Benefit: ") + item.benefit, style = MaterialTheme.typography.labelSmall.copy(color = TextLightPurple))
                                 }
                             }
                         }
@@ -575,7 +607,7 @@ fun FullScreenHisn(onBack: () -> Unit) {
 }
 
 @Composable
-fun FullScreenDhikrReading(type: String, onComplete: () -> Unit, onDismiss: () -> Unit) {
+fun FullScreenDhikrReading(type: String, isArabic: Boolean, onComplete: () -> Unit, onDismiss: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     val list = if (type == "morning") morningAdhkarList else eveningAdhkarList
     var currentIndex by remember { mutableStateOf(0) }
@@ -587,7 +619,7 @@ fun FullScreenDhikrReading(type: String, onComplete: () -> Unit, onDismiss: () -
     Column(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.CenterHorizontally) {
         Row(modifier = Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, null, tint = TextWhite) }
-            Text(text = if (type == "morning") "أذكار الصباح" else "أذكار المساء", style = MaterialTheme.typography.titleLarge.copy(color = PrimaryAccent, fontWeight = FontWeight.Bold))
+            Text(text = if (type == "morning") (if(isArabic) "أذكار الصباح" else "Morning") else (if(isArabic) "أذكار المساء" else "Evening"), style = MaterialTheme.typography.titleLarge.copy(color = PrimaryAccent, fontWeight = FontWeight.Bold))
             IconButton(onClick = { currentIndex = 0; isFinished = false; currentCountsLeft.clear(); currentCountsLeft.addAll(list.map { it.count }) }) { Icon(Icons.Filled.Refresh, null, tint = TextWhite) }
         }
 
@@ -606,7 +638,7 @@ fun FullScreenDhikrReading(type: String, onComplete: () -> Unit, onDismiss: () -
             Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 20.dp).clip(RoundedCornerShape(24.dp)).background(CardBackground).border(1.dp, CardStroke, RoundedCornerShape(24.dp)).padding(24.dp), contentAlignment = Alignment.Center) {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(text = currentDhikr.text, style = MaterialTheme.typography.headlineSmall.copy(lineHeight = 36.sp, fontWeight = FontWeight.Bold, color = TextWhite), textAlign = TextAlign.Center)
-                    if (currentDhikr.benefit.isNotEmpty()) { Box(modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(AppBackground).padding(horizontal = 16.dp, vertical = 10.dp)) { Text(text = "الفضل: ${currentDhikr.benefit}", style = MaterialTheme.typography.bodySmall.copy(color = TextLightPurple), textAlign = TextAlign.Center) } }
+                    if (currentDhikr.benefit.isNotEmpty()) { Box(modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(AppBackground).padding(horizontal = 16.dp, vertical = 10.dp)) { Text(text = (if(isArabic) "الفضل: " else "Benefit: ") + currentDhikr.benefit, style = MaterialTheme.typography.bodySmall.copy(color = TextLightPurple), textAlign = TextAlign.Center) } }
                 }
             }
             Box(modifier = Modifier.size(115.dp).clip(CircleShape).background(PrimaryAccent.copy(alpha = 0.2f)).border(2.dp, PrimaryAccent, CircleShape).clickable {
@@ -615,20 +647,20 @@ fun FullScreenDhikrReading(type: String, onComplete: () -> Unit, onDismiss: () -
             }, contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("$curCountLeft", fontSize = 40.sp, fontWeight = FontWeight.ExtraBold, color = TextWhite)
-                    Text("متبقي", fontSize = 11.sp, color = TextWhite.copy(alpha = 0.8f))
+                    Text(if(isArabic) "متبقي" else "Left", fontSize = 11.sp, color = TextWhite.copy(alpha = 0.8f))
                 }
             }
             Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(onClick = { if (currentIndex > 0) { currentIndex--; currentCountsLeft[currentIndex] = list[currentIndex].count } }, enabled = currentIndex > 0) { Text("السابق", color = if (currentIndex > 0) PrimaryAccent else Color.Gray, fontWeight = FontWeight.Bold) }
-                TextButton(onClick = { currentCountsLeft[currentIndex] = 0; if (currentIndex < list.size - 1) currentIndex++ else isFinished = true }) { Text("تخطي", color = PrimaryAccent, fontWeight = FontWeight.Bold) }
+                TextButton(onClick = { if (currentIndex > 0) { currentIndex--; currentCountsLeft[currentIndex] = list[currentIndex].count } }, enabled = currentIndex > 0) { Text(if(isArabic) "السابق" else "Previous", color = if (currentIndex > 0) PrimaryAccent else Color.Gray, fontWeight = FontWeight.Bold) }
+                TextButton(onClick = { currentCountsLeft[currentIndex] = 0; if (currentIndex < list.size - 1) currentIndex++ else isFinished = true }) { Text(if(isArabic) "تخطي" else "Skip", color = PrimaryAccent, fontWeight = FontWeight.Bold) }
             }
         } else {
             Box(modifier = Modifier.fillMaxSize()) {
                 CelebrationEffect()
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth().align(Alignment.Center)) {
                     Icon(Icons.Filled.CheckCircle, null, tint = SuccessGreen, modifier = Modifier.size(80.dp))
-                    Text(text = "تقبل الله طاعتك!", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold, color = SuccessGreen))
-                    Button(onClick = onComplete, colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen), modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("إتمام", color = Color.White) }
+                    Text(text = if(isArabic) "تقبل الله طاعتك!" else "Accepted!", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold, color = SuccessGreen))
+                    Button(onClick = onComplete, colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen), modifier = Modifier.fillMaxWidth().height(52.dp)) { Text(if(isArabic) "إتمام" else "Done", color = Color.White) }
                 }
             }
         }
